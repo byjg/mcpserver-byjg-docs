@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 640" width="880" role="img"
+     aria-label="Hybrid search: a query is embedded and ranked by cosine similarity, and separately expanded and ranked by BM25. The two rankings are fused with Reciprocal Rank Fusion.">
+  <style>
+    
+    
+    .bg { fill: #ffffff; }
+    .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; rx: 8; }
+    .vbox { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.5; rx: 8; }
+    .kbox { fill: #fff1e5; stroke: #bc4c00; stroke-width: 1.5; rx: 8; }
+    .fbox { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.5; rx: 8; }
+    .t  { font: 600 14px system-ui, -apple-system, sans-serif; fill: #1f2328; }
+    .s  { font: 12px system-ui, -apple-system, sans-serif; fill: #656d76; }
+    .si { font: 12px system-ui, sans-serif; fill: #1f2328; }
+    .mono { font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #1f2328; }
+    .monod { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #656d76; }
+    .hdr { font: 700 11.5px system-ui, sans-serif; letter-spacing: .07em; }
+    .flow { fill: none; stroke-width: 2; }
+  
+    .fg-fuse { fill: #1a7f37; }
+    .fg-kw { fill: #bc4c00; }
+    .fg-vec { fill: #0969da; }
+    .sk-fuse { stroke: #1a7f37; }
+    .sk-kw { stroke: #bc4c00; }
+    .sk-vec { stroke: #0969da; }
+    @media (prefers-color-scheme: dark) {
+    .sk-fuse { stroke: #3fb950; }
+    .sk-kw { stroke: #db6d28; }
+    .sk-vec { stroke: #4493f8; }
+    .bg { fill: #0d1117; }
+    .box { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 8; }
+    .vbox { fill: #121d2f; stroke: #4493f8; stroke-width: 1.5; rx: 8; }
+    .kbox { fill: #21160c; stroke: #db6d28; stroke-width: 1.5; rx: 8; }
+    .fbox { fill: #0f2417; stroke: #3fb950; stroke-width: 1.5; rx: 8; }
+    .t  { font: 600 14px system-ui, -apple-system, sans-serif; fill: #e6edf3; }
+    .s  { font: 12px system-ui, -apple-system, sans-serif; fill: #8b949e; }
+    .si { font: 12px system-ui, sans-serif; fill: #e6edf3; }
+    .mono { font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #e6edf3; }
+    .monod { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8b949e; }
+    .fg-fuse { fill: #3fb950; }
+    .fg-kw { fill: #db6d28; }
+    .fg-vec { fill: #4493f8; }
+    }
+  </style>
+  <defs>
+    <marker id="av" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-vec"/></marker>
+    <marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-kw"/></marker>
+    <marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-fuse"/></marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="880" height="640"/>
+
+  <!-- query -->
+  <rect class="box" x="330" y="24" width="220" height="46"/>
+  <text class="t" x="440" y="44" text-anchor="middle">Query</text>
+  <text class="mono" x="440" y="62" text-anchor="middle">"TableAttribute"</text>
+
+  <path class="flow sk-vec" d="M 400 70 L 240 70 Q 228 70 228 82 L 228 108" marker-end="url(#av)"/>
+  <path class="flow sk-kw" d="M 480 70 L 640 70 Q 652 70 652 82 L 652 108" marker-end="url(#ak)"/>
+
+  <!-- vector branch -->
+  <text class="hdr fg-vec" x="88" y="100">SEMANTIC</text>
+  <rect class="vbox" x="88" y="110" width="280" height="72"/>
+  <text class="t" x="228" y="132" text-anchor="middle">Embed the query</text>
+  <text class="monod" x="228" y="150" text-anchor="middle">search_query: TableAttribute</text>
+  <text class="s" x="228" y="169" text-anchor="middle">768-dim vector · cosine KNN</text>
+
+  <path class="flow sk-vec" d="M 228 182 L 228 216" marker-end="url(#av)"/>
+
+  <rect class="box" x="88" y="218" width="280" height="96"/>
+  <text class="s" x="104" y="238">ranked pool</text>
+  <text class="mono" x="104" y="260">1. XmlDataset</text>
+  <text class="mono" x="104" y="278">44. comparison-with-other-orms</text>
+  <text class="mono" x="104" y="296">53. uuid-support</text>
+
+  <!-- keyword branch -->
+  <text class="hdr fg-kw" x="512" y="100">LEXICAL</text>
+  <rect class="kbox" x="512" y="110" width="280" height="72"/>
+  <text class="t" x="652" y="132" text-anchor="middle">Expand CamelCase</text>
+  <text class="monod" x="652" y="152" text-anchor="middle">"TableAttribute" OR</text>
+  <text class="monod" x="652" y="168" text-anchor="middle">("Table" AND "Attribute")</text>
+
+  <path class="flow sk-kw" d="M 652 182 L 652 216" marker-end="url(#ak)"/>
+
+  <rect class="box" x="512" y="218" width="280" height="96"/>
+  <text class="s" x="528" y="238">ranked pool</text>
+  <text class="mono" x="528" y="260">1. model-attribute   (the canonical page)</text>
+  <text class="mono" x="528" y="278">45. uuid-support</text>
+  <text class="mono" x="528" y="296">53. comparison-with-other-orms</text>
+
+  <!-- fusion -->
+  <path class="flow sk-vec" d="M 228 314 L 228 350 Q 228 362 240 362 L 300 362" marker-end="url(#av)"/>
+  <path class="flow sk-kw" d="M 652 314 L 652 350 Q 652 362 640 362 L 580 362" marker-end="url(#ak)"/>
+
+  <rect class="fbox" x="300" y="334" width="280" height="86"/>
+  <text class="t" x="440" y="357" text-anchor="middle">Reciprocal Rank Fusion</text>
+  <text class="mono" x="440" y="380" text-anchor="middle">score = Σ 1 / (60 + rank)</text>
+  <text class="s" x="440" y="401" text-anchor="middle">uses positions, not raw scores —</text>
+  <text class="s" x="440" y="415" text-anchor="middle">cosine and BM25 are not comparable</text>
+
+  <path class="flow sk-fuse" d="M 440 420 L 440 456" marker-end="url(#af)"/>
+
+  <!-- result -->
+  <rect class="box" x="140" y="458" width="600" height="70"/>
+  <text class="t" x="440" y="481" text-anchor="middle">Merged results</text>
+  <text class="s" x="440" y="500" text-anchor="middle">each passage carries its heading path and public URL,</text>
+  <text class="s" x="440" y="516" text-anchor="middle">so the model can cite where the answer came from</text>
+
+  <!-- takeaway -->
+  <rect class="box" x="140" y="550" width="600" height="72"/>
+  <text class="si" x="164" y="574">Why both rankers run:</text>
+  <text class="s" x="164" y="595">A hit at bm25#1 / vec#53 is a symbol lookup — pure vector search misses it.</text>
+  <text class="s" x="164" y="612">A hit at vec#1 / bm25#– is a paraphrase — BM25 has no stopwords to match.</text>
+</svg>

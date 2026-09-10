@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 660" width="880" role="img"
+     aria-label="Infrastructure topology: Cloudflare edge reaches cloudflared through an outbound tunnel; cloudflared reaches the MCP server, which talks to Ollama. Three Docker volumes hold the model, the repo and the index.">
+  <style>
+    
+    
+    .bg { fill: #ffffff; }
+    .box { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; rx: 8; }
+    .nbox { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.5; rx: 8; }
+    .abox { fill: #fbefff; stroke: #8250df; stroke-width: 1.5; rx: 8; }
+    .dbox { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.5; rx: 8; }
+    .hostzone { fill: none; stroke: #656d76; stroke-width: 1.5; stroke-dasharray: 6 4; rx: 12; }
+    .t  { font: 600 14px system-ui, -apple-system, sans-serif; fill: #1f2328; }
+    .s  { font: 12px system-ui, -apple-system, sans-serif; fill: #656d76; }
+    .mono { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #656d76; }
+    .hdr { font: 700 11.5px system-ui, sans-serif; letter-spacing: .07em; fill: #656d76; }
+    .flow { fill: none; stroke-width: 2; }
+    .dash { fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
+  
+    .fg-app { fill: #8250df; }
+    .fg-data { fill: #1a7f37; }
+    .fg-net { fill: #0969da; }
+    .sk-app { stroke: #8250df; }
+    .sk-data { stroke: #1a7f37; }
+    .sk-net { stroke: #0969da; }
+    @media (prefers-color-scheme: dark) {
+    .sk-app { stroke: #b87fff; }
+    .sk-data { stroke: #3fb950; }
+    .sk-net { stroke: #4493f8; }
+    .bg { fill: #0d1117; }
+    .box { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 8; }
+    .nbox { fill: #121d2f; stroke: #4493f8; stroke-width: 1.5; rx: 8; }
+    .abox { fill: #1d1526; stroke: #b87fff; stroke-width: 1.5; rx: 8; }
+    .dbox { fill: #0f2417; stroke: #3fb950; stroke-width: 1.5; rx: 8; }
+    .hostzone { fill: none; stroke: #8b949e; stroke-width: 1.5; stroke-dasharray: 6 4; rx: 12; }
+    .t  { font: 600 14px system-ui, -apple-system, sans-serif; fill: #e6edf3; }
+    .s  { font: 12px system-ui, -apple-system, sans-serif; fill: #8b949e; }
+    .mono { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8b949e; }
+    .hdr { font: 700 11.5px system-ui, sans-serif; letter-spacing: .07em; fill: #8b949e; }
+    .fg-app { fill: #b87fff; }
+    .fg-data { fill: #3fb950; }
+    .fg-net { fill: #4493f8; }
+    }
+  </style>
+  <defs>
+    <marker id="an" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-net"/></marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-app"/></marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="fg-data"/></marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="880" height="660"/>
+
+  <!-- internet zone -->
+  <rect class="box" x="300" y="20" width="280" height="46"/>
+  <text class="t" x="440" y="40" text-anchor="middle">Remote MCP client</text>
+  <text class="s" x="440" y="57" text-anchor="middle">you, outside the local network</text>
+
+  <path class="flow sk-net" d="M 440 66 L 440 96" marker-end="url(#an)"/>
+
+  <rect class="nbox" x="300" y="98" width="280" height="62"/>
+  <text class="t" x="440" y="120" text-anchor="middle">Cloudflare edge</text>
+  <text class="s" x="440" y="138" text-anchor="middle">TLS · DNS · optional Access policies</text>
+  <text class="mono" x="440" y="154" text-anchor="middle">mcp-docs.byjg.com</text>
+
+  <path class="flow sk-net" d="M 440 160 L 440 208" marker-end="url(#an)"/>
+  <text class="s" x="452" y="180">outbound tunnel —</text>
+  <text class="s" x="452" y="196">no inbound port opened</text>
+
+  <!-- host boundary -->
+  <rect class="hostzone" x="40" y="210" width="800" height="424"/>
+  <text class="hdr" x="60" y="234">HOST · docker compose</text>
+
+  <rect class="nbox" x="300" y="250" width="280" height="52"/>
+  <text class="t" x="440" y="272" text-anchor="middle">cloudflared</text>
+  <text class="s" x="440" y="290" text-anchor="middle">dials out, forwards to mcp:8080</text>
+
+  <path class="flow sk-app" d="M 440 302 L 440 336" marker-end="url(#aa)"/>
+
+  <!-- mcp -->
+  <rect class="abox" x="270" y="338" width="340" height="88"/>
+  <text class="t" x="440" y="361" text-anchor="middle">mcp</text>
+  <text class="mono" x="440" y="381" text-anchor="middle">/mcp · /webhook/github · /healthz</text>
+  <text class="s" x="440" y="401" text-anchor="middle">bearer token required off loopback</text>
+  <text class="mono" x="440" y="418" text-anchor="middle">127.0.0.1:2954  (local clients)</text>
+
+  <!-- local client -->
+  <rect class="box" x="60" y="352" width="180" height="60"/>
+  <text class="t" x="150" y="374" text-anchor="middle">Local client</text>
+  <text class="s" x="150" y="392" text-anchor="middle">skips the tunnel</text>
+  <text class="mono" x="150" y="407" text-anchor="middle">loopback</text>
+  <path class="flow sk-app" d="M 240 382 L 264 382" marker-end="url(#aa)"/>
+
+  <!-- ollama -->
+  <rect class="abox" x="640" y="338" width="180" height="88"/>
+  <text class="t" x="730" y="361" text-anchor="middle">ollama</text>
+  <text class="s" x="730" y="380" text-anchor="middle">nomic-embed-text</text>
+  <text class="s" x="730" y="397" text-anchor="middle">GPU · 595 MB</text>
+  <text class="mono" x="730" y="414" text-anchor="middle">:11434 not published</text>
+  <path class="flow sk-app" d="M 610 382 L 634 382" marker-end="url(#aa)"/>
+
+  <!-- volumes -->
+  <text class="hdr" x="60" y="470">STORAGE</text>
+  <rect class="dbox" x="325" y="482" width="230" height="66"/>
+  <text class="t" x="440" y="504" text-anchor="middle">index</text>
+  <text class="s" x="440" y="522" text-anchor="middle">byjg-docs.db · 24 MB</text>
+  <text class="s" x="440" y="538" text-anchor="middle">rebuildable in ~60s</text>
+
+  <rect class="dbox" x="590" y="482" width="230" height="66"/>
+  <text class="t" x="705" y="504" text-anchor="middle">ollama</text>
+  <text class="s" x="705" y="522" text-anchor="middle">model weights</text>
+  <text class="s" x="705" y="538" text-anchor="middle">pulled once at first boot</text>
+
+  <rect class="box" x="60" y="482" width="230" height="66" stroke-dasharray="5 4"/>
+  <text class="t" x="175" y="504" text-anchor="middle">tmp checkout</text>
+  <text class="s" x="175" y="522" text-anchor="middle">shallow clone per refresh</text>
+  <text class="s" x="175" y="538" text-anchor="middle">deleted afterwards</text>
+
+  <path class="dash sk-data" d="M 440 426 L 440 476" marker-end="url(#ad)"/>
+  <path class="dash sk-net" d="M 340 426 L 200 426 Q 188 426 188 438 L 188 476" marker-end="url(#an)"/>
+  <path class="dash sk-data" d="M 730 426 L 730 476" marker-end="url(#ad)"/>
+
+  <!-- webhook -->
+  <rect class="box" x="60" y="568" width="760" height="52"/>
+  <text class="t" x="80" y="590">GitHub push</text>
+  <text class="s" x="80" y="609">signature verified, then docs/ paths only, then 202 immediately, then clone + reindex in background</text>
+</svg>

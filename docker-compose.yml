@@ -1,0 +1,92 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+    # Not published: only `mcp` talks to it, over the internal network.
+    expose:
+      - "11434"
+    # Requires nvidia-container-toolkit on the host. Without it the container
+    # still runs, but on CPU -- roughly 45x slower to build the index.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Pulls the embedding model once into the shared volume, then exits.
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "nomic-embed-text"]
+    restart: "no"
+
+  mcp:
+    build: .
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    volumes:
+      # Only the index is persisted; the docs are re-cloned on each refresh.
+      - index:/data/index
+    # Everything in .env reaches the container, so editing it actually takes
+    # effect. Without this only the handful of variables listed below would,
+    # and the rest would silently fall back to code defaults.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fixed by the container: these describe where things live *inside* it,
+      # so a value from .env meant for running on the host would break it.
+      BYJG_DOCS_TRANSPORT: http
+      BYJG_DOCS_HOST: 0.0.0.0
+      BYJG_DOCS_PORT: 8080
+      BYJG_DOCS_INDEX_PATH: /data/index/byjg-docs.db
+      BYJG_DOCS_OLLAMA_URL: http://ollama:11434
+      # Indexing a host path makes no sense in here; the repo is cloned instead.
+      BYJG_DOCS_DOCS_ROOT: ""
+      # Fail fast with a clear message rather than starting up misconfigured.
+      BYJG_DOCS_AUTH_TOKEN: ${BYJG_DOCS_AUTH_TOKEN:?set it in .env}
+      BYJG_DOCS_PUBLIC_URL: ${BYJG_DOCS_PUBLIC_URL:?set it in .env}
+    restart: unless-stopped
+    # Where the port is published on the HOST. This is independent of the
+    # tunnel: cloudflared reaches the server at mcp:8080 over the compose
+    # network, so it works even with no published port at all.
+    #   0.0.0.0    every interface, so other machines on the LAN connect
+    #              directly by IP without going out through Cloudflare (default)
+    #   127.0.0.1  this machine only
+    # The bearer token is always required, but 0.0.0.0 also makes the port
+    # visible to anything that can route to this host -- which includes the
+    # internet if the machine has a public IP or a forwarded port.
+    ports:
+      - "${BYJG_DOCS_BIND_ADDR:-0.0.0.0}:${BYJG_DOCS_LOCAL_PORT:-2954}:8080"
+
+  # Optional. Only starts with:  docker compose --profile tunnel up -d
+  # Skip it if you run cloudflared on the host, or reach the server over the
+  # LAN only. Nothing else depends on it.
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    depends_on:
+      - mcp
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    restart: unless-stopped
+
+volumes:
+  ollama:
+  index:
