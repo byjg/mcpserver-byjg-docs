@@ -42,8 +42,11 @@ services:
       ollama-init:
         condition: service_completed_successfully
     volumes:
-      # Only the index is persisted; the docs are re-cloned on each refresh.
+      # The docs are re-cloned on each refresh; the index is rebuilt from them.
       - index:/data/index
+      # The query log is the one thing here that cannot be rebuilt, so it
+      # lives apart from the disposable index.
+      - logs:/data/logs
     # Everything in .env reaches the container, so editing it actually takes
     # effect. Without this only the handful of variables listed below would,
     # and the rest would silently fall back to code defaults.
@@ -58,6 +61,7 @@ services:
       BYJG_DOCS_PORT: 8080
       BYJG_DOCS_INDEX_PATH: /data/index/byjg-docs.db
       BYJG_DOCS_OLLAMA_URL: http://ollama:11434
+      BYJG_DOCS_QUERY_LOG: /data/logs/queries.jsonl
       # Indexing a host path makes no sense in here; the repo is cloned instead.
       BYJG_DOCS_DOCS_ROOT: ""
       # Fail fast with a clear message rather than starting up misconfigured.
@@ -90,3 +94,4 @@ services:
 volumes:
   ollama:
   index:
+  logs:

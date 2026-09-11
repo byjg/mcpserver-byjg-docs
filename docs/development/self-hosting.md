@@ -29,17 +29,18 @@ Ollama is not published at all.
 | `mcp` | The MCP server. Publishes port `2954` on the host; the tunnel reaches it internally. | always |
 | `cloudflared` | Dials out to Cloudflare and forwards the public hostname to `mcp:8080`. Opt-in: only starts with `--profile tunnel`. | always |
 
-and two named volumes:
+and three named volumes:
 
 | Volume | Holds | Safe to delete? |
 |---|---|---|
 | `ollama` | Model weights (~274 MB) | Yes -- `ollama-init` re-pulls |
 | `index` | `byjg-docs.db` (24 MB) | Yes -- rebuilt in ~60s |
+| `logs` | `queries.jsonl`, the [query log](#query-log) (at most 60 MB) | Yes, but the query history is gone |
 
 There is no volume for the documentation: each refresh clones it from GitHub
-into a temporary directory and deletes the checkout afterwards. Nothing here
-holds state that is not reproducible, which is why there is no backup
-procedure.
+into a temporary directory and deletes the checkout afterwards. The query log
+is the only state that cannot be rebuilt, which is why it has a volume of its
+own and the index stays disposable.
 
 ## Deploying
 
@@ -349,11 +350,64 @@ docker volume rm mcpserver-byjg-docs_index
 docker compose up -d      # notices the empty index and rebuilds it
 ```
 
+### Query log
+
+Every tool call is appended to `/data/logs/queries.jsonl` in the `logs`
+volume, one JSON object per line:
+
+```json
+{"ts": "2026-09-11T16:20:03+00:00", "tool": "search_docs", "query": "soft delete", "limit": 8, "category": null, "project": null, "hits": 8, "top_score": 0.0325, "top_vec_rank": 1, "top_bm25_rank": 2, "sources": ["php/micro-orm/softdelete.md", "..."]}
+{"ts": "2026-09-11T16:20:09+00:00", "tool": "get_document", "source_path": "php/micro-orm/softdelete.md", "found": true}
+```
+
+Its purpose is finding what the documentation does not cover. The signals:
+
+- **`hits: 0`** -- nothing matched at all (usually a `category`/`project`
+  filter with nothing behind it).
+- **A low `top_score`** -- something came back, but nothing matched well.
+  Scores are Reciprocal Rank Fusion values: a hit ranked first by both rankers
+  scores about 0.033. Judge "low" from your own data rather than a fixed
+  number.
+- **`top_bm25_rank: null`** -- only the vector ranker found the best hit: the
+  words of the query appear nowhere in the docs. Expected for paraphrases,
+  suspicious for a symbol name.
+- **`get_document` with `found: false`** -- the model asked for a page that
+  does not exist.
+
+The image has no `jq`, so stream the file out and filter on the host
+(`queries.jsonl*` includes the rotated files):
+
+```bash
+qlog() { docker exec mcpserver-byjg-docs-mcp-1 sh -c 'cat /data/logs/queries.jsonl*'; }
+
+# Queries that found nothing
+qlog | jq -c 'select(.tool=="search_docs" and .hits==0) | .query'
+
+# Weakest searches first
+qlog | jq -r 'select(.tool=="search_docs" and .hits>0) | [.top_score, .query] | @tsv' | sort -n | head -20
+
+# Best hit found only by the vector ranker
+qlog | jq -c 'select(.tool=="search_docs" and .hits>0 and .top_bm25_rank==null) | .query'
+```
+
+The file rotates at 10 MB and keeps five old files (`queries.jsonl.1` to
+`.5`), so it never grows past about 60 MB. A client using
+[the stack over stdio](#from-the-same-machine-over-stdio) inherits the
+setting and writes to the same file.
+
+> **Privacy:** queries can contain pieces of the user's own code or questions.
+> The log stays in the volume on this host; nothing sends it anywhere.
+
+To turn it off, remove the `BYJG_DOCS_QUERY_LOG` line from
+`docker-compose.yml`. Running from source it is off unless
+`BYJG_DOCS_QUERY_LOG` names a file.
+
 ### Backup
 
 The index is one file inside the `index` volume, fully derived from a public
-git repository, and rebuilt in ~60s. There is nothing here worth backing up
-that GitHub does not already hold.
+git repository, and rebuilt in ~60s. There is nothing there worth backing up
+that GitHub does not already hold. The only state worth keeping is the query
+log in the `logs` volume, and losing it costs history, not service.
 
 ## Data flows
 
@@ -362,6 +416,7 @@ Worth knowing given the tunnel exposes this publicly:
 - **Documentation content** is cloned from a public repo on each refresh,
   embedded by a local Ollama, and stored in a local file. The checkout is
   temporary and deleted afterwards.
-- **Query text** goes to the local Ollama only. No embedding provider sees it.
+- **Query text** goes to the local Ollama only, and into the query log on
+  this host. No embedding provider sees it.
 - **What crosses the internet** is the MCP request and response through the
   Cloudflare tunnel, and the `git clone` of the public docs repo.

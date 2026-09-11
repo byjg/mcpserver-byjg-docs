@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     #: MCP's auth model advertises the resource under this URL, so it must
     #: match what clients actually connect to.
     public_url: str = "http://127.0.0.1:2954"
+    #: File that records every tool call as a JSON line (query, hit count, best
+    #: score), to find what the documentation does not cover. Empty disables it.
+    query_log: str = ""
 
     # -- webhook --------------------------------------------------------
     #: Shared secret configured on the GitHub webhook. Empty disables the

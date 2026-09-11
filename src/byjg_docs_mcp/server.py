@@ -14,6 +14,7 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from pydantic import AnyHttpUrl
 
+from .querylog import QueryLog
 from .runtime import Runtime, build_runtime
 from .stores import SearchHit
 from .webhook import register_health, register_webhook
@@ -81,6 +82,7 @@ def build_server(runtime: Runtime) -> MCPServer:
         token_verifier=verifier,
         auth=auth,
     )
+    query_log = QueryLog(settings.query_log)
 
     @mcp.tool(
         title="Search ByJG documentation",
@@ -105,6 +107,7 @@ def build_server(runtime: Runtime) -> MCPServer:
         hits = runtime.store.search(
             query, vector, limit=limit, category=category, project=project
         )
+        query_log.search(query, limit, category, project, hits)
         if not hits:
             scope = f" in {category or ''}/{project or ''}" if category or project else ""
             return f"No documentation found for {query!r}{scope}."
@@ -122,6 +125,7 @@ def build_server(runtime: Runtime) -> MCPServer:
     )
     def get_document(source_path: str) -> str:
         doc = runtime.store.get_document(source_path)
+        query_log.document(source_path, found=doc is not None)
         if doc is None:
             return (
                 f"No document at {source_path!r}. "
@@ -138,6 +142,7 @@ def build_server(runtime: Runtime) -> MCPServer:
         ),
     )
     def list_projects() -> str:
+        query_log.projects()
         projects = runtime.store.list_projects()
         if not projects:
             return "The index is empty. Run `byjg-docs-index build` first."

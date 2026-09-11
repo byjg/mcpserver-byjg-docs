@@ -152,6 +152,7 @@ The `AND` keeps the spelled-out form from matching every page that merely says
 | `server.py` | The three MCP tools and the transports. |
 | `sync.py` | Clone into a temporary directory → reindex → discard; one run at a time. |
 | `webhook.py` | GitHub push → signature and path checks → triggers `sync`. `/healthz`. |
+| `querylog.py` | One JSON line per tool call, to find what the docs do not cover. |
 | `cli.py` | `build`, `search`, `stats`. |
 
 The dependency arrows all point one way: `server` and `cli` depend on

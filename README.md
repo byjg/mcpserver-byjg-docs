@@ -59,6 +59,12 @@ Connection problems: [Troubleshooting](docs/clients.md#troubleshooting).
 exact symbol name (`TableAttribute`) -- both work. See
 [the tools in detail](docs/clients.md#the-tools).
 
+## Privacy
+
+The server records each tool call -- the query, its filters and how well the
+documentation matched -- to find what the docs do not cover yet. The log stays
+on the server and is not shared. Do not put secrets in a query.
+
 ## Development
 
 To run the server yourself, self-host it, or change the code, see

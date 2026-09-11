@@ -73,6 +73,7 @@ The server **refuses to start** over HTTP on a non-loopback address without
 | `BYJG_DOCS_AUTH_TOKEN` | *(empty)* | Bearer token; required off loopback |
 | `BYJG_DOCS_PUBLIC_URL` | `http://127.0.0.1:2954` | The address clients use; must match it exactly |
 | `BYJG_DOCS_WEBHOOK_SECRET` | *(empty)* | Enables `/webhook/github`; empty disables it |
+| `BYJG_DOCS_QUERY_LOG` | *(empty)* | File that records every tool call -- see [Query log](self-hosting.md#query-log); empty disables it |
 
 `BYJG_DOCS_PUBLIC_URL` must match what clients type. MCP advertises the
 protected resource under this URL, so a mismatch fails authentication even
@@ -102,7 +103,7 @@ Read by `docker-compose.yml`, not by the app:
 
 ## What compose overrides
 
-Everything in `.env` reaches the container, **except** five values that
+Everything in `.env` reaches the container, **except** six values that
 describe the inside of it:
 
 | Variable | Forced to | Why |
@@ -112,6 +113,7 @@ describe the inside of it:
 | `BYJG_DOCS_PORT` | `8080` | the port inside the container; the host side is `BYJG_DOCS_LOCAL_PORT` |
 | `BYJG_DOCS_INDEX_PATH` | `/data/index/byjg-docs.db` | the mounted volume |
 | `BYJG_DOCS_OLLAMA_URL` | `http://ollama:11434` | the service name, not localhost |
+| `BYJG_DOCS_QUERY_LOG` | `/data/logs/queries.jsonl` | the `logs` volume; the query log is on in every deployment |
 
 plus `BYJG_DOCS_DOCS_ROOT`, cleared because a host path means nothing inside
 the container -- the repository is cloned instead.
