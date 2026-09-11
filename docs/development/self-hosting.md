@@ -267,14 +267,23 @@ enables it automatically, because it sets both variables the endpoint needs
 (`BYJG_DOCS_TRANSPORT=http` in the image, `BYJG_DOCS_WEBHOOK_SECRET` from your
 `.env`).
 
-Configure a webhook on `byjg/byjg.github.io`:
+On `byjg/byjg.github.io`, open **Settings > Webhooks > Add webhook** (it needs
+admin rights on the repository) and fill in:
 
 | Field | Value |
 |---|---|
 | Payload URL | `https://<your-hostname>/webhook/github` |
 | Content type | `application/json` |
 | Secret | your `BYJG_DOCS_WEBHOOK_SECRET` |
+| SSL verification | Enable |
 | Events | Just the push event |
+
+GitHub never shows the secret again after saving, so keep it wherever you
+keep the server's `.env`.
+
+On save, GitHub sends a `ping`. Open the webhook's **Recent Deliveries** tab
+to see the server's answer: a `200` there already proves the whole path works
+-- see the table below.
 
 What the endpoint does, in order:
 
@@ -306,6 +315,32 @@ curl -s -X POST http://127.0.0.1:2954/webhook/github \
   -H "Content-Type: application/json" -d "$BODY"
 # {"status":"reindexing"}
 ```
+
+### Reading a delivery
+
+Every delivery in **Recent Deliveries** shows the server's response:
+
+| Response | Meaning |
+|---|---|
+| `200` `{"status": "pong"}` | The `ping` on save. Only sent after the signature checks out, so the secret matches and the endpoint is reachable |
+| `202` `{"status": "reindexing"}` | A push touched `docs/`; a refresh started in the background |
+| `202` `{"status": "already running"}` | A refresh was already in flight; this push did not start another |
+| `200` `{"status": "ignored", "reason": "no docs changed"}` | The push touched no `docs/` path -- ignored on purpose |
+| `200` `{"status": "ignored", "event": "..."}` | An event other than `push` or `ping` |
+| `401` `{"error": "invalid signature"}` | The webhook's secret does not match `BYJG_DOCS_WEBHOOK_SECRET` |
+| `404` | Endpoint not registered: `BYJG_DOCS_WEBHOOK_SECRET` is empty on the server |
+| A Cloudflare error page or timeout | The server or the tunnel is down |
+
+After a `202`, `/healthz` reports `"reindexing": true` until the clone and
+reindex finish -- usually well under two minutes when few files changed.
+
+### Behind Cloudflare Access
+
+If the hostname is protected by [Cloudflare Access](#authentication), GitHub's
+deliveries carry no Access credentials and are stopped at the edge: Recent
+Deliveries shows a Cloudflare redirect or `403` instead of the server's
+answer. Add a policy with action **Bypass** for the path `/webhook/github` --
+the endpoint authenticates every request by its signature anyway.
 
 ## Connecting clients
 

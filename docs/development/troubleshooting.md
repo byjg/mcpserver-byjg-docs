@@ -70,6 +70,8 @@ The secret configured on the webhook does not match
 rejected by design.
 
 **Webhook returns 202 but nothing reindexes**
-Check `docker compose logs mcp`. The likely causes are a push that touched no
-`docs/` path (ignored on purpose), or the clone failing -- look for
-`reindex failed` in the log.
+A `202` means the refresh started, so the failure is in the background job:
+check `docker compose logs mcp` for `reindex failed` -- usually the clone. A
+push that touched no `docs/` path gets a `200` `ignored` instead, never a
+`202`. Every response is explained in
+[Reading a delivery](self-hosting.md#reading-a-delivery).
