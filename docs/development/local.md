@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Running locally
 
 Run the server from source on your own machine, without Docker. This is the

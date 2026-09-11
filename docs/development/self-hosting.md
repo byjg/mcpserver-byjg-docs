@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Self-hosting
 
 Run your own server with Docker Compose: Ollama, the MCP server over HTTP, the
@@ -68,10 +72,13 @@ other setting: [Configuration](configuration.md).
 ### Start
 
 ```bash
+docker compose pull mcp
 docker compose up -d
 ```
 
-That starts `ollama`, `ollama-init` and `mcp`. The tunnel is **opt-in**:
+That starts `ollama`, `ollama-init` and `mcp`, using the published
+`byjg/mcpserver-byjg-docs:latest` image (see [Updating](#updating)). The
+tunnel is **opt-in**:
 
 ```bash
 docker compose --profile tunnel up -d     # adds cloudflared
@@ -117,7 +124,21 @@ you can still run everything else and reach it on the host port:
 docker compose up -d ollama mcp      # skip cloudflared
 ```
 
-To rebuild after changing the code:
+### Updating
+
+The Build workflow publishes the image on every push to `main` (`latest`) and
+every tag (`1.2.3`), after the tests pass. To update a running stack:
+
+```bash
+docker compose pull mcp
+docker compose up -d mcp
+```
+
+The index volume survives; the new container reuses it. To pin a release
+instead of following `main`, change `image:` in `docker-compose.yml` to a
+version tag.
+
+To run local, unpublished changes, build this checkout instead:
 
 ```bash
 docker compose up -d --build mcp

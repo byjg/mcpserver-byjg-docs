@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Connecting a client
 
 Every client needs the same two things:
@@ -236,7 +240,7 @@ public URL and project.
 
 - `query` -- natural language or an exact symbol name; both work
 - `limit` -- defaults to 8, capped at 25
-- `category` -- `php`, `devops`, `js`, `helm`, ...
+- `category` -- `php`, `devops`, `js`, `ai`, `helm`, ...
 - `project` -- `micro-orm`, `restserver`, `docker-easy-haproxy`, ...
 
 ### `get_document(source_path)`

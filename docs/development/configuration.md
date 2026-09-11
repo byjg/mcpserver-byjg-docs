@@ -1,8 +1,13 @@
+---
+sidebar_position: 4
+---
+
 # Configuration
 
 Every setting is an environment variable prefixed `BYJG_DOCS_`, read from a
-single `.env` in the project root. Copy [.env.example](../../.env.example) to
-`.env`; it is annotated and covers every setting.
+single `.env` in the project root. Copy
+[.env.example](https://github.com/byjg/mcpserver-byjg-docs/blob/main/.env.example)
+to `.env`; it is annotated and covers every setting.
 
 ## How .env is read
 

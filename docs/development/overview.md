@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Development
 
 Everything about running, hosting and changing the server. To *use* the

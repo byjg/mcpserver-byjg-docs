@@ -1,3 +1,8 @@
+---
+sidebar_key: mcpserver-byjg-docs
+tags: [ai, python, docker]
+---
+
 # ByJG Docs MCP Server
 
 An [MCP](https://modelcontextprotocol.io) server that gives AI assistants
@@ -68,4 +73,4 @@ on the server and is not shared. Do not put secrets in a query.
 ## Development
 
 To run the server yourself, self-host it, or change the code, see
-[Development](docs/development/index.md).
+[Development](docs/development/overview.md).

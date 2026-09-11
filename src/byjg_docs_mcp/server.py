@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = """\
 Searches the ByJG open source documentation (PHP libraries, DevOps tooling,
-Helm charts and JavaScript components) published at opensource.byjg.com.
+Helm charts, JavaScript components and AI tools) published at
+opensource.byjg.com.
 
 Use `search_docs` to answer questions about how a ByJG library works, then cite
 the returned URL. Use `get_document` when a search hit looks right but you need
@@ -91,7 +92,7 @@ def build_server(runtime: Runtime) -> MCPServer:
             "relevant passages, each with its public URL. Combines semantic and "
             "keyword matching, so both natural-language questions ('how do I "
             "map a table to a class') and exact symbol names ('TableAttribute') "
-            "work. Optionally narrow to a category (php, devops, js, helm) or a "
+            "work. Optionally narrow to a category (php, devops, js, ai, helm) or a "
             "project (micro-orm, restserver, docker-easy-haproxy, ...)."
         ),
     )

@@ -1,3 +1,7 @@
+---
+sidebar_position: 6
+---
+
 # Troubleshooting
 
 Problems running or hosting the server. For a client that cannot connect, see

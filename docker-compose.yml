@@ -37,6 +37,10 @@ services:
     restart: "no"
 
   mcp:
+    # Published by the Build workflow: main -> latest, tag 1.2.3 -> 1.2.3.
+    # `docker compose pull mcp` fetches it; `up -d --build mcp` builds this
+    # checkout instead, for local changes.
+    image: byjg/mcpserver-byjg-docs:latest
     build: .
     depends_on:
       ollama-init:
