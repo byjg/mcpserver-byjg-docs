@@ -1,94 +1,51 @@
-# byjg-docs-mcp
+# ByJG Docs MCP Server
 
-MCP server for semantic search over the [ByJG documentation](https://opensource.byjg.com).
+An [MCP](https://modelcontextprotocol.io) server that gives AI assistants
+semantic search over the documentation of every ByJG open source project --
+the same content published at [opensource.byjg.com](https://opensource.byjg.com).
 
-Turns the ~550 markdown files in `byjg.github.io/docs` into ~4,100 searchable
-passages and exposes them to an LLM through three MCP tools, so it can answer
-questions about the ByJG libraries and cite the page it got the answer from.
+Connect your assistant and it can answer questions about the ByJG libraries
+(MicroOrm, RestServer, Gluo, EasyHAProxy, ...) and cite the documentation page
+each answer came from.
 
-![Data flow: the write path indexes markdown into the store; the read path answers MCP queries. Both meet at the embedder and the store.](docs/img/data-flow.svg)
-
-## Documentation
+## Endpoint
 
 | | |
 |---|---|
-| [Usage](docs/usage.md) | Building the index, running the server, the MCP tools, configuration |
-| [Infrastructure](docs/infrastructure.md) | Docker deployment, GPU, Cloudflare Tunnel, the GitHub webhook |
-| [Architecture](docs/architecture.md) | How it works and why it is built this way |
+| URL | `https://mcpdocs.byjg.com/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | `Authorization: Bearer <TOKEN>` |
 
-## Quick start
+Replace `<TOKEN>` with the token you were given. The URL must end in `/mcp`.
 
-```bash
-uv sync
-ollama serve &
-ollama pull nomic-embed-text
+Most clients accept this shape; the exact file and keys vary per client:
 
-cp .env.example .env          # defaults already point at byjg.github.io
-uv run byjg-docs-index build  # clones from GitHub and indexes, ~60s
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "url": "https://mcpdocs.byjg.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <TOKEN>"
+      }
+    }
+  }
+}
 ```
 
-```bash
-uv run byjg-docs-index search "how do I map a table to a class"
-```
+## Add it to your client
 
-Register with Claude Code, running it locally over stdio:
+| Client | |
+|---|---|
+| Claude Code (CLI) | [instructions](docs/clients.md#claude-code) |
+| Claude Desktop | [instructions](docs/clients.md#claude-desktop) |
+| Codex CLI | [instructions](docs/clients.md#codex-cli) |
+| Gemini CLI | [instructions](docs/clients.md#gemini-cli) |
+| Cursor | [instructions](docs/clients.md#cursor) |
+| VS Code | [instructions](docs/clients.md#vs-code) |
+| JetBrains IDEs | [instructions](docs/clients.md#jetbrains-ides) |
 
-```bash
-claude mcp add byjg-docs -- \
-  uv --directory ~/Projects/ByJG/McpServer run byjg-docs-mcp
-```
-
-Or run it as a service and reach it over the network — this is also the mode
-that serves the GitHub webhook and the health check. It needs two secrets in
-`.env`, each from its own `openssl rand -hex 32`:
-
-```bash
-# .env:  BYJG_DOCS_AUTH_TOKEN, BYJG_DOCS_WEBHOOK_SECRET, BYJG_DOCS_PUBLIC_URL
-docker compose up -d                       # ollama + mcp
-docker compose --profile tunnel up -d      # ... plus a Cloudflare tunnel
-
-claude mcp add --transport http --scope user byjg-docs \
-  https://mcp.example.com/mcp \
-  --header "Authorization: Bearer $BYJG_DOCS_AUTH_TOKEN"
-```
-
-On the same machine as the stack, skip the token and the network: `docker exec`
-runs a stdio server inside the `mcp` container, sharing its index and Ollama:
-
-```bash
-claude mcp add --scope user byjg-docs -- \
-  docker exec -i -e BYJG_DOCS_TRANSPORT=stdio mcpserver-mcp-1 byjg-docs-mcp
-```
-
-See [Infrastructure](docs/infrastructure.md) for the compose stack and
-[Running the server](docs/usage.md#running-the-server) for what each mode
-exposes.
-
-## What it does
-
-**Hybrid retrieval.** Vector similarity answers natural-language questions;
-BM25 catches exact symbol names like `TableAttribute`, which pure vector search
-is notably bad at. Results are fused with Reciprocal Rank Fusion.
-
-**Heading-aware chunking.** Passages are split on markdown headings rather than
-fixed-size windows, so each one is a coherent section that arrives with its
-heading path and public URL attached.
-
-**GitHub is the source of truth.** Each refresh clones the docs repository into
-a temporary directory and discards it afterwards — there is no working copy to
-initialise, keep in sync or back up. Indexing stays incremental anyway, because
-it keys on content hashes a fresh clone reproduces exactly: a rebuild after an
-unrelated push re-embeds nothing.
-
-**One file.** The whole index is a 24 MB SQLite database -- `sqlite-vec` for
-vectors, FTS5 for keywords. At this corpus size a brute-force scan takes
-milliseconds, so a dedicated vector service would be infrastructure without a
-payoff. See [Architecture](docs/architecture.md#the-shape-of-the-problem).
-
-**Swappable backends.** Storage sits behind a `VectorStore` interface and
-embedding behind an `Embedder` interface; nothing outside `stores/` and
-`embeddings/` names a concrete backend. See
-[Swapping the store](docs/architecture.md#swapping-the-store).
+Connection problems: [Troubleshooting](docs/clients.md#troubleshooting).
 
 ## Tools
 
@@ -98,11 +55,11 @@ embedding behind an `Embedder` interface; nothing outside `stores/` and
 | `get_document(source_path)` | Full markdown of one page |
 | `list_projects()` | Inventory of what is indexed |
 
-## Tests
+`query` accepts natural language ("how do I map a table to a class") or an
+exact symbol name (`TableAttribute`) -- both work. See
+[the tools in detail](docs/clients.md#the-tools).
 
-```bash
-uv run pytest
-```
+## Development
 
-73 tests, fully offline -- a deterministic hash-based embedder stands in for
-Ollama, so no model server is needed.
+To run the server yourself, self-host it, or change the code, see
+[Development](docs/development/index.md).

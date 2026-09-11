@@ -32,7 +32,7 @@ Everything is either the **write path** (getting documents into the index) or
 the **read path** (answering a query). They share the data model and nothing
 else.
 
-![Data flow: the write path indexes markdown into the store; the read path answers MCP queries. Both meet at the embedder and the store.](img/data-flow.svg)
+![Data flow: the write path indexes markdown into the store; the read path answers MCP queries. Both meet at the embedder and the store.](../img/data-flow.svg)
 
 ## Write path
 
@@ -124,7 +124,7 @@ Each ranker returns an over-fetched pool. A chunk's score is the sum of
 the raw scores, so it does not need cosine distance and BM25 to be on a
 comparable scale -- they are not.
 
-![A query is embedded and ranked by cosine similarity, and separately expanded and ranked by BM25; the two rankings are fused with Reciprocal Rank Fusion.](img/hybrid-search.svg)
+![A query is embedded and ranked by cosine similarity, and separately expanded and ranked by BM25; the two rankings are fused with Reciprocal Rank Fusion.](../img/hybrid-search.svg)
 
 ### CamelCase expansion
 
@@ -150,7 +150,8 @@ The `AND` keeps the spelled-out form from matching every page that merely says
 | `stores/` | `VectorStore` interface + SQLite implementation. |
 | `runtime.py` | Wires config into concrete components. |
 | `server.py` | The three MCP tools and the transports. |
-| `webhook.py` | GitHub push → git pull → reindex. |
+| `sync.py` | Clone into a temporary directory → reindex → discard; one run at a time. |
+| `webhook.py` | GitHub push → signature and path checks → triggers `sync`. `/healthz`. |
 | `cli.py` | `build`, `search`, `stats`. |
 
 The dependency arrows all point one way: `server` and `cli` depend on

@@ -62,7 +62,7 @@
   <rect class="nbox" x="300" y="98" width="280" height="62"/>
   <text class="t" x="440" y="120" text-anchor="middle">Cloudflare edge</text>
   <text class="s" x="440" y="138" text-anchor="middle">TLS · DNS · optional Access policies</text>
-  <text class="mono" x="440" y="154" text-anchor="middle">mcp-docs.byjg.com</text>
+  <text class="mono" x="440" y="154" text-anchor="middle">mcpdocs.byjg.com</text>
 
   <path class="flow sk-net" d="M 440 160 L 440 208" marker-end="url(#an)"/>
   <text class="s" x="452" y="180">outbound tunnel —</text>

@@ -1,4 +1,10 @@
-# Infrastructure
+# Self-hosting
+
+Run your own server with Docker Compose: Ollama, the MCP server over HTTP, the
+GitHub webhook that keeps the index fresh, and optionally a Cloudflare Tunnel
+to publish it. This is how `mcpdocs.byjg.com` runs.
+
+To work on the code without Docker, see [Running locally](local.md) instead.
 
 ## Topology
 
@@ -6,10 +12,11 @@ Four containers. Ollama and the MCP server talk over the compose network;
 `cloudflared` reaches the MCP server the same way and is the only thing exposed
 to the internet.
 
-![Cloudflare edge reaches cloudflared through an outbound tunnel; cloudflared reaches the MCP server, which talks to Ollama. Three Docker volumes hold the model, the repo and the index.](img/infrastructure.svg)
+![Cloudflare edge reaches cloudflared through an outbound tunnel; cloudflared reaches the MCP server, which talks to Ollama. Two Docker volumes hold the model and the index; the docs checkout is temporary.](../img/infrastructure.svg)
 
-The MCP server is published on `127.0.0.1:2954` so a local client can reach it
-without going out to the internet and back. Ollama is not published at all.
+The MCP server is published on port `2954` of the host so clients on this
+machine or the LAN can reach it without going out to the internet and back.
+Ollama is not published at all.
 
 ## The compose stack
 
@@ -19,10 +26,10 @@ without going out to the internet and back. Ollama is not published at all.
 |---|---|---|
 | `ollama` | Serves embeddings on `:11434`. Reserves the host GPU. Not published -- only `mcp` reaches it, over the compose network. | always |
 | `ollama-init` | Pulls `nomic-embed-text` into the shared volume, then exits. `mcp` waits for it to *complete successfully*. | never |
-| `mcp` | The MCP server. Publishes `127.0.0.1:2954` for local clients; the tunnel reaches it internally. | always |
+| `mcp` | The MCP server. Publishes port `2954` on the host; the tunnel reaches it internally. | always |
 | `cloudflared` | Dials out to Cloudflare and forwards the public hostname to `mcp:8080`. Opt-in: only starts with `--profile tunnel`. | always |
 
-and three named volumes:
+and two named volumes:
 
 | Volume | Holds | Safe to delete? |
 |---|---|---|
@@ -34,30 +41,13 @@ into a temporary directory and deletes the checkout afterwards. Nothing here
 holds state that is not reproducible, which is why there is no backup
 procedure.
 
-### Running a subset
+## Deploying
 
-The services are independent enough to run partially. Without a tunnel token
-you can still run everything else and reach it on loopback:
-
-```bash
-docker compose up -d ollama mcp      # skip cloudflared
-```
-
-To rebuild after changing the code:
+### Configure
 
 ```bash
-docker compose up -d --build mcp
-```
-
-## Configuration
-
-There is **one** file: `.env` in the project root, copied from `.env.example`.
-It serves both ways of running -- compose passes the whole file into the
-container, and the app reads it directly when you run it on the host.
-
-### What you must fill in
-
-```bash
+git clone git@github.com:byjg/mcpserver-byjg-docs.git
+cd mcpserver-byjg-docs
 cp .env.example .env
 openssl rand -hex 32     # paste into BYJG_DOCS_AUTH_TOKEN
 openssl rand -hex 32     # paste into BYJG_DOCS_WEBHOOK_SECRET
@@ -70,36 +60,11 @@ openssl rand -hex 32     # paste into BYJG_DOCS_WEBHOOK_SECRET
 | `BYJG_DOCS_WEBHOOK_SECRET` | a *second*, different `openssl rand -hex 32` | Only for the webhook; empty disables it |
 | `CLOUDFLARE_TUNNEL_TOKEN` | from Zero Trust > Networks > Tunnels | Only with `--profile tunnel` |
 
-The two generated values must **differ** -- one authenticates MCP clients, the
-other verifies GitHub's signatures. Reusing one for both means a leak of either
-compromises the other.
+`BYJG_DOCS_PUBLIC_URL` is the tunnel hostname if you have one, otherwise this
+machine's address (e.g. `http://<host-ip>:2954`). Why it must match, and every
+other setting: [Configuration](configuration.md).
 
-`BYJG_DOCS_PUBLIC_URL` must match what clients type. MCP advertises the
-protected resource under this URL, so a mismatch fails authentication even with
-the right token. Use the tunnel hostname if you have one, otherwise this
-machine's address (e.g. `http://<host-ip>:2954`).
-
-### What compose overrides
-
-Everything in `.env` reaches the container, **except** five values that
-describe the inside of it:
-
-| Variable | Forced to | Why |
-|---|---|---|
-| `BYJG_DOCS_TRANSPORT` | `http` | stdio has no server for the tunnel to reach |
-| `BYJG_DOCS_HOST` | `0.0.0.0` | must accept connections from the compose network |
-| `BYJG_DOCS_PORT` | `8080` | the port inside the container; the host side is `BYJG_DOCS_LOCAL_PORT` (default `2954`) |
-| `BYJG_DOCS_INDEX_PATH` | `/data/index/byjg-docs.db` | the mounted volume |
-| `BYJG_DOCS_OLLAMA_URL` | `http://ollama:11434` | the service name, not localhost |
-
-plus `BYJG_DOCS_DOCS_ROOT`, cleared because a host path means nothing inside
-the container -- the repository is cloned instead.
-
-Everything else you set takes effect: change `BYJG_DOCS_GIT_BRANCH` and it
-clones that branch; change `BYJG_DOCS_DEFAULT_LIMIT` and searches return that
-many results.
-
-## Deploying
+### Start
 
 ```bash
 docker compose up -d
@@ -141,6 +106,21 @@ Measured on an RTX 2000 Ada: **~90s**, of which ~22s is the clone.
 `ollama-init` pulls the embedding model into the shared volume and exits;
 `mcp` waits for it to complete successfully. Without that gate the server would
 come up before the model existed and fail its first embedding call.
+
+### Running a subset
+
+The services are independent enough to run partially. Without a tunnel token
+you can still run everything else and reach it on the host port:
+
+```bash
+docker compose up -d ollama mcp      # skip cloudflared
+```
+
+To rebuild after changing the code:
+
+```bash
+docker compose up -d --build mcp
+```
 
 ## GPU
 
@@ -205,7 +185,7 @@ Three things are easy to confuse. They are independent:
 
 | Setting | Controls | Value |
 |---|---|---|
-| `BYJG_DOCS_HOST` | Where the process listens *inside* the container | `0.0.0.0` — must be, or `cloudflared` could not reach it |
+| `BYJG_DOCS_HOST` | Where the process listens *inside* the container | `0.0.0.0` -- must be, or `cloudflared` could not reach it |
 | `ports:` in compose | Which host interface publishes the port | `BYJG_DOCS_BIND_ADDR`, default `0.0.0.0` |
 | Cloudflare Tunnel | Access from outside the network | Reaches `mcp:8080` over the compose network |
 
@@ -214,7 +194,7 @@ on the compose network, so the tunnel works even with `ports:` removed
 entirely. Publishing is purely for clients on this machine or the LAN.
 
 The default publishes on `0.0.0.0`, so other machines on your network connect
-directly by IP — faster than going out to Cloudflare and back, and it keeps
+directly by IP -- faster than going out to Cloudflare and back, and it keeps
 working if your internet does not:
 
 ```bash
@@ -230,7 +210,7 @@ The bearer token, and only the bearer token.
 **A host firewall does not.** Docker publishes ports by writing iptables rules
 in its own chain, which is evaluated before ufw's. On a machine with ufw
 active and denying incoming traffic, a published port is still reachable from
-the LAN — verified, not assumed. So:
+the LAN -- verified, not assumed. So:
 
 - Treat `BYJG_DOCS_AUTH_TOKEN` as the only barrier, and generate it with
   `openssl rand -hex 32` rather than picking something memorable.
@@ -254,17 +234,16 @@ Two independent layers:
 The server refuses to bind a non-loopback address without a token, so the
 second layer cannot be forgotten.
 
-This is deliberately minimal: one pre-shared token for a personal, read-only
-service. More than one consumer, or per-user revocation, wants real OAuth via
-the SDK's `auth_server_provider`.
+This is deliberately minimal: one pre-shared token for a read-only service.
+More than one consumer with per-user revocation wants real OAuth via the SDK's
+`auth_server_provider`.
 
 ## Keeping the index fresh
 
 `POST /webhook/github` reindexes when documentation changes. The compose stack
 enables it automatically, because it sets both variables the endpoint needs
 (`BYJG_DOCS_TRANSPORT=http` in the image, `BYJG_DOCS_WEBHOOK_SECRET` from your
-`.env`). Running the server by hand instead? See
-[Over HTTP, with the webhook](usage.md#over-http-with-the-webhook).
+`.env`).
 
 Configure a webhook on `byjg/byjg.github.io`:
 
@@ -287,6 +266,14 @@ What the endpoint does, in order:
 4. **Drops overlapping triggers.** A burst of pushes must not start concurrent
    clones; the run already in flight picks up the newer commits.
 
+Confirm the endpoint is registered:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:2954/webhook/github -d '{}'
+# 401  -- registered, and rejecting an unsigned request
+# 404  -- not registered: BYJG_DOCS_WEBHOOK_SECRET is empty
+```
+
 Verify a delivery end to end:
 
 ```bash
@@ -298,29 +285,48 @@ curl -s -X POST http://127.0.0.1:2954/webhook/github \
 # {"status":"reindexing"}
 ```
 
-## Connecting a client
+## Connecting clients
 
-Through the tunnel, with `--scope user` so the server is available in every
-directory rather than only the one you ran the command in:
+### Over the network
 
-```bash
-claude mcp add --transport http --scope user byjg-docs \
-  https://mcp-docs.byjg.com/mcp \
-  --header "Authorization: Bearer $BYJG_DOCS_AUTH_TOKEN"
-```
+Follow [Connecting a client](../clients.md), with two substitutions: your
+`BYJG_DOCS_PUBLIC_URL` plus `/mcp` in place of `https://mcpdocs.byjg.com/mcp`,
+and your `BYJG_DOCS_AUTH_TOKEN` in place of `<TOKEN>`.
 
-Full walkthrough, including what each failure mode means:
-[Connecting a client through the tunnel](usage.md#connecting-a-client-through-the-tunnel).
+### From the same machine, over stdio
 
-On this machine you can skip the token and the network entirely --
-`docker exec` runs a stdio server inside the `mcp` container:
+A client on the host running the stack can skip the token and the network:
+`docker exec` starts a stdio server inside the running `mcp` container.
 
 ```bash
 claude mcp add --scope user byjg-docs -- \
-  docker exec -i -e BYJG_DOCS_TRANSPORT=stdio mcpserver-mcp-1 byjg-docs-mcp
+  docker exec -i -e BYJG_DOCS_TRANSPORT=stdio mcpserver-byjg-docs-mcp-1 byjg-docs-mcp
 ```
 
-Details: [Through the compose stack, over stdio](usage.md#through-the-compose-stack-over-stdio).
+For a client configured through a form or a JSON file:
+
+| Field | Value |
+|---|---|
+| Command | `/usr/bin/docker` -- the full path, since GUI apps often lack your shell's `PATH` |
+| Arguments | `exec -i -e BYJG_DOCS_TRANSPORT=stdio mcpserver-byjg-docs-mcp-1 byjg-docs-mcp` |
+
+- `-i` keeps stdin open; the protocol runs over it. Do not add `-t` -- a TTY
+  mangles the stream.
+- `BYJG_DOCS_TRANSPORT=stdio` overrides the `http` the container runs with.
+- The process shares the container's index volume and reaches Ollama at
+  `ollama:11434`, so nothing is built on the host. It never triggers a reindex;
+  the long-running HTTP server keeps the index fresh.
+- No bearer token: stdio does not pass through HTTP authentication, and anyone
+  who can run `docker exec` already controls the container.
+- The stack must be up. `mcpserver-byjg-docs-mcp-1` comes from the project
+  directory name -- if you cloned into a different directory, check
+  `docker compose ps` for the actual name.
+
+To search from the terminal, run the CLI in the container:
+
+```bash
+docker exec mcpserver-byjg-docs-mcp-1 byjg-docs-index search "soft delete" -n 3
+```
 
 ## Operations
 
@@ -339,7 +345,7 @@ building" from "healthy".
 
 ```bash
 docker compose down
-docker volume rm mcpserver_index
+docker volume rm mcpserver-byjg-docs_index
 docker compose up -d      # notices the empty index and rebuilds it
 ```
 
@@ -358,4 +364,4 @@ Worth knowing given the tunnel exposes this publicly:
   temporary and deleted afterwards.
 - **Query text** goes to the local Ollama only. No embedding provider sees it.
 - **What crosses the internet** is the MCP request and response through the
-  Cloudflare tunnel, and the `git clone`/`fetch` of the public docs repo.
+  Cloudflare tunnel, and the `git clone` of the public docs repo.
