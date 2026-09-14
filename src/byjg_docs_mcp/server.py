@@ -63,16 +63,29 @@ def _format_hit(hit: SearchHit, index: int) -> str:
 
 def build_server(runtime: Runtime) -> MCPServer:
     settings = runtime.settings
+    # Authentication belongs to the HTTP transport: stdio is a pipe between a
+    # client and the process it spawned, with nothing to authenticate.
     # A token verifier is only accepted alongside auth settings, which describe
     # the resource clients are authenticating against.
     verifier = None
     auth = None
-    if settings.auth_token:
+    if settings.transport != "stdio" and settings.auth_type == "bearer":
+        if not settings.auth_token:
+            raise SystemExit(
+                "BYJG_DOCS_AUTH_TYPE=bearer needs BYJG_DOCS_AUTH_TOKEN. "
+                "Generate one with `openssl rand -hex 32`, or set "
+                "BYJG_DOCS_AUTH_TYPE=none to serve without authentication."
+            )
         verifier = StaticTokenVerifier(settings.auth_token)
         auth = AuthSettings(
             issuer_url=AnyHttpUrl(settings.public_url),
             resource_server_url=AnyHttpUrl(settings.public_url),
             required_scopes=["read"],
+        )
+    elif settings.transport != "stdio" and settings.auth_token:
+        logger.warning(
+            "BYJG_DOCS_AUTH_TOKEN is set but BYJG_DOCS_AUTH_TYPE is 'none': "
+            "the token is ignored and every client is served."
         )
 
     mcp = MCPServer(
@@ -191,10 +204,15 @@ def main() -> None:
         if settings.transport == "stdio":
             server.run("stdio")
         else:
-            if not settings.auth_token and settings.host not in {"127.0.0.1", "localhost"}:
-                raise SystemExit(
-                    "Refusing to serve on a non-loopback address without "
-                    "BYJG_DOCS_AUTH_TOKEN set."
+            if settings.auth_type == "none" and settings.host not in {"127.0.0.1", "localhost"}:
+                # A deliberate choice (a trusted LAN, or an edge that
+                # authenticates), so it runs -- but never silently.
+                logger.warning(
+                    "Serving UNAUTHENTICATED on %s:%s: anything that can reach "
+                    "this port can read the index. Set BYJG_DOCS_AUTH_TYPE=bearer "
+                    "with BYJG_DOCS_AUTH_TOKEN to require a token.",
+                    settings.host,
+                    settings.port,
                 )
             server.run(
                 "streamable-http",

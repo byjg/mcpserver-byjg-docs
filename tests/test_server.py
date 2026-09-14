@@ -22,6 +22,7 @@ def no_real_clone(monkeypatch):
 @pytest.fixture
 def base(tmp_path):
     return Settings(
+        _env_file=None,  # the developer's .env must not leak into the tests
         transport="http",
         auth_token="tok",
         public_url="http://127.0.0.1:2954",

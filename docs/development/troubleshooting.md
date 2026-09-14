@@ -30,9 +30,19 @@ or delete the `.db` and build again.
 
 ## Server
 
-**Server exits with "Refusing to serve on a non-loopback address"**
-The HTTP transport is bound off loopback without a token. Set
-`BYJG_DOCS_AUTH_TOKEN`, or bind `127.0.0.1`.
+**Server exits with "BYJG_DOCS_AUTH_TYPE=bearer needs BYJG_DOCS_AUTH_TOKEN"**
+`bearer` was chosen (compose does that by default) but no token is set.
+Generate one with `openssl rand -hex 32`, or set `BYJG_DOCS_AUTH_TYPE=none` to
+serve without authentication -- see
+[Authentication](self-hosting.md#authentication).
+
+**Log says "Serving UNAUTHENTICATED on 0.0.0.0"**
+`BYJG_DOCS_AUTH_TYPE=none` on a public interface. Intended for a trusted LAN
+or an edge that authenticates; otherwise switch to `bearer`.
+
+**Clients get 401 against a server that used to work**
+The deployment now runs with `bearer`. Add the header, or set
+`BYJG_DOCS_AUTH_TYPE=none` if the content is public.
 
 **`/healthz` returns 404**
 The transport is `stdio`. Health and webhook endpoints exist only over HTTP --

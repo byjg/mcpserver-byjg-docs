@@ -60,8 +60,9 @@ openssl rand -hex 32     # paste into BYJG_DOCS_WEBHOOK_SECRET
 
 | Variable | Value | Required? |
 |---|---|---|
-| `BYJG_DOCS_AUTH_TOKEN` | `openssl rand -hex 32` | Yes -- compose refuses to start without it |
-| `BYJG_DOCS_PUBLIC_URL` | the address clients actually use | Yes -- same reason |
+| `BYJG_DOCS_AUTH_TYPE` | `bearer` or `none` | No -- compose uses `bearer` unless you set it |
+| `BYJG_DOCS_AUTH_TOKEN` | `openssl rand -hex 32` | With `bearer`: yes, the server refuses to start without it |
+| `BYJG_DOCS_PUBLIC_URL` | the address clients actually use | Yes -- compose refuses to start without it |
 | `BYJG_DOCS_WEBHOOK_SECRET` | a *second*, different `openssl rand -hex 32` | Only for the webhook; empty disables it |
 | `CLOUDFLARE_TUNNEL_TOKEN` | from Zero Trust > Networks > Tunnels | Only with `--profile tunnel` |
 
@@ -227,37 +228,70 @@ Set `BYJG_DOCS_BIND_ADDR=127.0.0.1` to restrict it to this machine.
 
 ### What actually protects the port
 
-The bearer token, and only the bearer token.
+Under `bearer`, the token and only the token. Under
+[`none`](#authentication), nothing does -- every client that reaches the port
+is served, which is the point of that setting.
 
 **A host firewall does not.** Docker publishes ports by writing iptables rules
 in its own chain, which is evaluated before ufw's. On a machine with ufw
 active and denying incoming traffic, a published port is still reachable from
 the LAN -- verified, not assumed. So:
 
-- Treat `BYJG_DOCS_AUTH_TOKEN` as the only barrier, and generate it with
-  `openssl rand -hex 32` rather than picking something memorable.
+- With `bearer`, treat `BYJG_DOCS_AUTH_TOKEN` as the only barrier, and
+  generate it with `openssl rand -hex 32` rather than picking something
+  memorable.
 - Check what can route to this host. If it has a public IP, or a forwarded
-  port on the router, `0.0.0.0` means the internet, not just your LAN.
-- `/healthz` answers without a token by design, exposing only document and
-  chunk counts. The MCP endpoint itself returns 401 without a valid token.
+  port on the router, `0.0.0.0` means the internet, not just your LAN. That is
+  the question to answer before choosing `none`.
+- `/healthz` answers without a token under either setting, exposing only
+  document and chunk counts.
 
 If you want the firewall to be meaningful here, bind to `127.0.0.1` and let
 the tunnel be the only way in.
 
 ## Authentication
 
-Two independent layers:
+`BYJG_DOCS_AUTH_TYPE` decides who may call the MCP endpoint:
 
-1. **Cloudflare Access** (optional, at the edge) -- policies before a request
-   ever reaches the host.
-2. **Bearer token** (in the app) -- `StaticTokenVerifier`, compared in constant
-   time so a wrong token cannot be recovered by timing.
+| Value | Behaviour |
+|---|---|
+| `none` (the app's default) | Anything that can reach the port is served. `BYJG_DOCS_AUTH_TOKEN` is ignored, and a warning says so if it is set |
+| `bearer` (compose's default) | Clients must send `Authorization: Bearer <token>`; anything else gets 401 |
 
-The server refuses to bind a non-loopback address without a token, so the
-second layer cannot be forgotten.
+Under `bearer` the token is checked by `StaticTokenVerifier`, compared in
+constant time so a wrong token cannot be recovered by timing. The server
+**refuses to start** when `bearer` has no token, so a typo cannot quietly open
+it up.
+
+`docker-compose.yml` sets `bearer` unless `.env` says otherwise, because a
+deployment is reachable from outside this host. Choosing `none` there is a
+deliberate edit.
+
+Under `stdio` both settings are ignored: the client spawned the process, and
+there is no HTTP layer to authenticate.
+
+### When `none` is the right answer
+
+- A loopback bind, where the port is not reachable from elsewhere.
+- A trusted LAN.
+- An edge that authenticates instead -- **Cloudflare Access** policies run
+  before a request ever reaches the host.
+- **Public, read-only content.** `mcpdocs.byjg.com` runs with `none`: it serves
+  the same documentation as opensource.byjg.com, so a token would protect
+  nothing that is not already public. What it costs is compute, which is why
+  the [query log](#query-log) is worth watching.
+
+Serving `none` on a non-loopback address logs a warning on every start -- the
+choice is legitimate, but never silent.
+
+### When `bearer` is the right answer
+
+Anything that is not public: a private fork of the docs, an index over
+internal material, or a deployment whose compute you do not want strangers
+using.
 
 This is deliberately minimal: one pre-shared token for a read-only service.
-More than one consumer with per-user revocation wants real OAuth via the SDK's
+More than one consumer, or per-user revocation, wants real OAuth via the SDK's
 `auth_server_provider`.
 
 ## Keeping the index fresh
@@ -346,9 +380,9 @@ the endpoint authenticates every request by its signature anyway.
 
 ### Over the network
 
-Follow [Connecting a client](../clients.md), with two substitutions: your
-`BYJG_DOCS_PUBLIC_URL` plus `/mcp` in place of `https://mcpdocs.byjg.com/mcp`,
-and your `BYJG_DOCS_AUTH_TOKEN` in place of `<TOKEN>`.
+Follow [Connecting a client](../clients.md), using your `BYJG_DOCS_PUBLIC_URL`
+plus `/mcp` in place of `https://mcpdocs.byjg.com/mcp`. With `bearer`, pick
+the **With token** tab on that page and use your `BYJG_DOCS_AUTH_TOKEN`.
 
 ### From the same machine, over stdio
 

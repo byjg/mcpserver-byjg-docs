@@ -29,7 +29,7 @@ each from its own run of `openssl rand -hex 32`, and they must be
 
 | Variable | What it is |
 |---|---|
-| `BYJG_DOCS_AUTH_TOKEN` | the bearer token MCP clients send |
+| `BYJG_DOCS_AUTH_TOKEN` | the bearer token MCP clients send (only with `BYJG_DOCS_AUTH_TYPE=bearer`) |
 | `BYJG_DOCS_WEBHOOK_SECRET` | the secret GitHub signs webhook deliveries with |
 
 Reusing one value for both means leaking either compromises the other.
@@ -52,8 +52,10 @@ reason an endpoint appears to be missing:
 the webhook. The webhook endpoint is only registered when a secret exists --
 there is no such thing as an unauthenticated webhook here.
 
-The server **refuses to start** over HTTP on a non-loopback address without
-`BYJG_DOCS_AUTH_TOKEN`, so it cannot be exposed unauthenticated by accident.
+Who may call the MCP endpoint is a separate question, answered by
+`BYJG_DOCS_AUTH_TYPE` -- see [Authentication](self-hosting.md#authentication).
+The server **refuses to start** when that is `bearer` and no token is set, and
+warns on every start when it is `none` on a non-loopback address.
 
 ## All settings
 
@@ -75,14 +77,18 @@ The server **refuses to start** over HTTP on a non-loopback address without
 | `BYJG_DOCS_TRANSPORT` | `stdio` | `stdio` or `http` |
 | `BYJG_DOCS_HOST` | `127.0.0.1` | Interface the HTTP server listens on |
 | `BYJG_DOCS_PORT` | `2954` | Port the HTTP server listens on |
-| `BYJG_DOCS_AUTH_TOKEN` | *(empty)* | Bearer token; required off loopback |
+| `BYJG_DOCS_AUTH_TYPE` | `none` | `none` or `bearer` -- see [Authentication](self-hosting.md#authentication). Compose defaults it to `bearer` |
+| `BYJG_DOCS_AUTH_TOKEN` | *(empty)* | The token `bearer` requires; ignored by `none` |
 | `BYJG_DOCS_PUBLIC_URL` | `http://127.0.0.1:2954` | The address clients use; must match it exactly |
 | `BYJG_DOCS_WEBHOOK_SECRET` | *(empty)* | Enables `/webhook/github`; empty disables it |
 | `BYJG_DOCS_QUERY_LOG` | *(empty)* | File that records every tool call -- see [Query log](self-hosting.md#query-log); empty disables it |
 
-`BYJG_DOCS_PUBLIC_URL` must match what clients type. MCP advertises the
-protected resource under this URL, so a mismatch fails authentication even
-with the right token.
+`BYJG_DOCS_PUBLIC_URL` must match what clients type. With `bearer`, MCP
+advertises the protected resource under this URL, so a mismatch fails
+authentication even with the right token. With `none` it is unused.
+
+Authentication belongs to the HTTP transport: under `stdio` both settings are
+ignored, because the client spawned the process itself.
 
 ### Storage, embeddings and retrieval
 
@@ -123,6 +129,8 @@ describe the inside of it:
 plus `BYJG_DOCS_DOCS_ROOT`, cleared because a host path means nothing inside
 the container -- the repository is cloned instead.
 
-Compose also refuses to start while `BYJG_DOCS_AUTH_TOKEN` or
+Compose also *defaults* `BYJG_DOCS_AUTH_TYPE` to `bearer` (a deployment is
+reachable from outside the host) and refuses to start while
 `BYJG_DOCS_PUBLIC_URL` is empty, rather than booting something
-half-configured.
+half-configured. The missing-token check lives in the app, so it applies
+however you run it.

@@ -19,9 +19,9 @@ each answer came from.
 |---|---|
 | URL | `https://mcpdocs.byjg.com/mcp` |
 | Transport | Streamable HTTP |
-| Authentication | `Authorization: Bearer <TOKEN>` |
+| Authentication | None -- the documentation is public, so no token is needed |
 
-Replace `<TOKEN>` with the token you were given. The URL must end in `/mcp`.
+The URL must end in `/mcp`.
 
 Most clients accept this shape; the exact file and keys vary per client:
 
@@ -29,14 +29,14 @@ Most clients accept this shape; the exact file and keys vary per client:
 {
   "mcpServers": {
     "byjg-docs": {
-      "url": "https://mcpdocs.byjg.com/mcp",
-      "headers": {
-        "Authorization": "Bearer <TOKEN>"
-      }
+      "url": "https://mcpdocs.byjg.com/mcp"
     }
   }
 }
 ```
+
+Running your own copy? It can require a bearer token instead --
+see [Authentication](docs/development/self-hosting.md#authentication).
 
 ## Add it to your client
 

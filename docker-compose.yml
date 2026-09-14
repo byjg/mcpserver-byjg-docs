@@ -68,8 +68,13 @@ services:
       BYJG_DOCS_QUERY_LOG: /data/logs/queries.jsonl
       # Indexing a host path makes no sense in here; the repo is cloned instead.
       BYJG_DOCS_DOCS_ROOT: ""
+      # A deployment is reachable from outside this host, so it requires a
+      # token unless you deliberately set BYJG_DOCS_AUTH_TYPE=none in .env.
+      # The app refuses to start when `bearer` has no token, so compose does
+      # not need to check it too.
+      BYJG_DOCS_AUTH_TYPE: ${BYJG_DOCS_AUTH_TYPE:-bearer}
+      BYJG_DOCS_AUTH_TOKEN: ${BYJG_DOCS_AUTH_TOKEN:-}
       # Fail fast with a clear message rather than starting up misconfigured.
-      BYJG_DOCS_AUTH_TOKEN: ${BYJG_DOCS_AUTH_TOKEN:?set it in .env}
       BYJG_DOCS_PUBLIC_URL: ${BYJG_DOCS_PUBLIC_URL:?set it in .env}
     restart: unless-stopped
     # Where the port is published on the HOST. This is independent of the

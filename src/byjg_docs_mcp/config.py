@@ -7,6 +7,9 @@ from pathlib import Path
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+#: Ways the HTTP transport can authenticate a client.
+AUTH_TYPES = {"none", "bearer"}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -62,9 +65,27 @@ class Settings(BaseSettings):
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 2954
-    #: Bearer token required by the HTTP transport. Empty means unauthenticated,
-    #: which is only ever appropriate on a loopback bind.
+    #: How the HTTP transport authenticates clients: "none" or "bearer".
+    #: "none" serves everyone that can reach the port, which is appropriate on a
+    #: loopback bind, on a trusted LAN, or behind an edge that authenticates
+    #: (Cloudflare Access). Ignored under stdio, which has no HTTP layer.
+    auth_type: str = "none"
+    #: Bearer token clients must send. Required by auth_type="bearer", ignored
+    #: by "none".
     auth_token: str = ""
+
+    @field_validator("auth_type", mode="before")
+    @classmethod
+    def _known_auth_type(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalised = value.strip().lower()
+            if normalised not in AUTH_TYPES:
+                raise ValueError(
+                    f"BYJG_DOCS_AUTH_TYPE must be one of {', '.join(sorted(AUTH_TYPES))}"
+                    f" (got {value!r})"
+                )
+            return normalised
+        return value
     #: Externally reachable base URL (the Cloudflare Tunnel hostname, say).
     #: MCP's auth model advertises the resource under this URL, so it must
     #: match what clients actually connect to.

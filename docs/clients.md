@@ -2,17 +2,22 @@
 sidebar_position: 1
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Connecting a client
 
-Every client needs the same two things:
+Every client needs the same thing: the URL `https://mcpdocs.byjg.com/mcp`, over
+streamable HTTP. The documentation is public, so **the ByJG server asks for no
+credentials**.
 
-| | |
-|---|---|
-| URL | `https://mcpdocs.byjg.com/mcp` |
-| Header | `Authorization: Bearer <TOKEN>` |
+Each section below has two tabs: **No token** for `mcpdocs.byjg.com`, and
+**With token** for a server of your own that runs with
+[`BYJG_DOCS_AUTH_TYPE=bearer`](development/self-hosting.md#authentication).
+Picking a tab switches every section on the page. In the "With token" tabs,
+replace `<TOKEN>` with the token of that server.
 
-Replace `<TOKEN>` with the token you were given. The examples below name the
-server `byjg-docs`; any name works.
+The examples name the server `byjg-docs`; any name works.
 
 - [Claude Code](#claude-code)
 - [Claude Desktop](#claude-desktop)
@@ -26,11 +31,25 @@ server `byjg-docs`; any name works.
 
 ## Claude Code
 
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
 ```bash
 claude mcp add --transport http --scope user byjg-docs \
-  https://mcpdocs.byjg.com/mcp \
+  https://mcpdocs.byjg.com/mcp
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```bash
+claude mcp add --transport http --scope user byjg-docs \
+  https://your-server.example.com/mcp \
   --header "Authorization: Bearer <TOKEN>"
 ```
+
+</TabItem>
+</Tabs>
 
 **Use `--scope user`.** The default scope is `local`, which registers the
 server only for the directory you ran the command in -- for a documentation
@@ -48,12 +67,15 @@ Remove: `claude mcp remove byjg-docs --scope user`.
 ## Claude Desktop
 
 Claude Desktop's config file only launches local (stdio) servers; it has no
-field for a remote URL with a static header. Bridge it with
+field for a remote URL. Bridge it with
 [`mcp-remote`](https://github.com/geelen/mcp-remote), a small local process
-that forwards requests and adds the header. It needs Node.js 18 or later.
+that forwards the requests. It needs Node.js 18 or later.
 
 Open **Settings > Developer > Edit Config**, which opens
 `claude_desktop_config.json`, and add:
+
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
 
 ```json
 {
@@ -63,7 +85,25 @@ Open **Settings > Developer > Edit Config**, which opens
       "args": [
         "-y",
         "mcp-remote",
-        "https://mcpdocs.byjg.com/mcp",
+        "https://mcpdocs.byjg.com/mcp"
+      ]
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://your-server.example.com/mcp",
         "--header",
         "Authorization:${AUTH_HEADER}"
       ],
@@ -79,6 +119,9 @@ Write `"Authorization:${AUTH_HEADER}"` exactly like that -- colon, no spaces.
 On Windows, Claude Desktop does not escape spaces inside `args`, so the space
 in `Bearer <TOKEN>` has to live in the `env` value instead.
 
+</TabItem>
+</Tabs>
+
 Restart Claude Desktop completely, then check **Settings > Developer** for the
 server status.
 
@@ -86,9 +129,20 @@ server status.
 
 Add to `~/.codex/config.toml`:
 
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
 ```toml
 [mcp_servers.byjg-docs]
 url = "https://mcpdocs.byjg.com/mcp"
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```toml
+[mcp_servers.byjg-docs]
+url = "https://your-server.example.com/mcp"
 http_headers = { "Authorization" = "Bearer <TOKEN>" }
 ```
 
@@ -97,17 +151,22 @@ instead:
 
 ```bash
 export BYJG_DOCS_TOKEN=<TOKEN>
-codex mcp add byjg-docs --url https://mcpdocs.byjg.com/mcp \
+codex mcp add byjg-docs --url https://your-server.example.com/mcp \
   --bearer-token-env-var BYJG_DOCS_TOKEN
 ```
+
+</TabItem>
+</Tabs>
 
 Verify: `codex mcp list`.
 
 ## Gemini CLI
 
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
 ```bash
 gemini mcp add --transport http --scope user \
-  --header "Authorization: Bearer <TOKEN>" \
   byjg-docs https://mcpdocs.byjg.com/mcp
 ```
 
@@ -118,7 +177,29 @@ Or edit `~/.gemini/settings.json` directly. Note the key is **`httpUrl`**;
 {
   "mcpServers": {
     "byjg-docs": {
-      "httpUrl": "https://mcpdocs.byjg.com/mcp",
+      "httpUrl": "https://mcpdocs.byjg.com/mcp"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```bash
+gemini mcp add --transport http --scope user \
+  --header "Authorization: Bearer <TOKEN>" \
+  byjg-docs https://your-server.example.com/mcp
+```
+
+Or edit `~/.gemini/settings.json` directly. Note the key is **`httpUrl`**;
+`url` means the older SSE transport in Gemini CLI:
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "httpUrl": "https://your-server.example.com/mcp",
       "headers": {
         "Authorization": "Bearer <TOKEN>"
       }
@@ -126,6 +207,9 @@ Or edit `~/.gemini/settings.json` directly. Note the key is **`httpUrl`**;
   }
 }
 ```
+
+</TabItem>
+</Tabs>
 
 Verify: `gemini mcp list`.
 
@@ -135,21 +219,40 @@ Click the **gear icon** at the top of the chat panel, open **Tools & MCP**,
 and click **Add Custom MCP**. That opens `~/.cursor/mcp.json` (available in
 every project; use `<project-root>/.cursor/mcp.json` for one project only):
 
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
 ```json
 {
   "mcpServers": {
     "byjg-docs": {
-      "url": "https://mcpdocs.byjg.com/mcp",
+      "url": "https://mcpdocs.byjg.com/mcp"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "url": "https://your-server.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer <TOKEN>"
+        "Authorization": "Bearer ${env:BYJG_DOCS_TOKEN}"
       }
     }
   }
 }
 ```
 
-To keep the token out of the file, write `"Bearer ${env:BYJG_DOCS_TOKEN}"`
-and export `BYJG_DOCS_TOKEN` before starting Cursor.
+`${env:BYJG_DOCS_TOKEN}` keeps the token out of the file: export it before
+starting Cursor. A literal `"Bearer <TOKEN>"` works too.
+
+</TabItem>
+</Tabs>
 
 The server shows up under **Tools & MCP** with a green dot once connected.
 
@@ -162,12 +265,29 @@ Command Palette. Either way you edit `mcp.json` in your user profile.
 VS Code's format differs from the others: the top-level key is `servers`, and
 each entry declares its `type`:
 
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
 ```json
 {
   "servers": {
     "byjg-docs": {
       "type": "http",
-      "url": "https://mcpdocs.byjg.com/mcp",
+      "url": "https://mcpdocs.byjg.com/mcp"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```json
+{
+  "servers": {
+    "byjg-docs": {
+      "type": "http",
+      "url": "https://your-server.example.com/mcp",
       "headers": {
         "Authorization": "Bearer <TOKEN>"
       }
@@ -176,60 +296,63 @@ each entry declares its `type`:
 }
 ```
 
-The server appears under **Installed** in the MCP Servers view. For a single
-workspace, put the same content in `.vscode/mcp.json` -- but that file is
-usually committed, so do not put the token in it.
+For a single workspace the same content goes in `.vscode/mcp.json` -- but that
+file is usually committed, so keep the token out of it and use an
+[input variable](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)
+instead.
+
+</TabItem>
+</Tabs>
+
+The server appears under **Installed** in the MCP Servers view.
 
 ## JetBrains IDEs
 
 Applies to IntelliJ IDEA, PhpStorm, PyCharm, WebStorm and the rest, through
 AI Assistant. Remote HTTP servers need version 2025.3 or later.
 
-1. Open **Settings > Tools > AI Assistant > Model Context Protocol (MCP)**.
-2. Click **+** (Add server).
-3. Select the **HTTP** tab and paste:
+Open **Settings > Tools > AI Assistant > Model Context Protocol (MCP)**, click
+**+** (Add server), select the **HTTP** tab and paste:
 
-   ```json
-   {
-     "mcpServers": {
-       "byjg-docs": {
-         "url": "https://mcpdocs.byjg.com/mcp",
-         "headers": {
-           "Authorization": "Bearer <TOKEN>"
-         }
-       }
-     }
-   }
-   ```
-
-4. Leave **Server level** on **Global** so it is available in every project
-   (saved to `~/.ai/mcp/mcp.json`), and click **OK**.
-
-The **Status** column turns green once connected.
-
-If your version does not send the header (the status shows an authentication
-error), use the **STDIO** tab with the same `mcp-remote` bridge as
-[Claude Desktop](#claude-desktop):
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
 
 ```json
 {
   "mcpServers": {
     "byjg-docs": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcpdocs.byjg.com/mcp",
-        "--header",
-        "Authorization:${AUTH_HEADER}"
-      ],
-      "env": {
-        "AUTH_HEADER": "Bearer <TOKEN>"
+      "url": "https://mcpdocs.byjg.com/mcp"
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "url": "https://your-server.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <TOKEN>"
       }
     }
   }
 }
 ```
+
+If your version does not send the header (the status shows an authentication
+error), use the **STDIO** tab with the same `mcp-remote` bridge as
+[Claude Desktop](#claude-desktop).
+
+</TabItem>
+</Tabs>
+
+Leave **Server level** on **Global** so it is available in every project
+(saved to `~/.ai/mcp/mcp.json`), and click **OK**. The **Status** column turns
+green once connected.
 
 ## The tools
 
@@ -257,7 +380,7 @@ discover what exists before searching.
 
 | Symptom | Cause |
 |---|---|
-| `401 Unauthorized` | Token missing or wrong, or the header is malformed -- it must be `Authorization: Bearer <TOKEN>` |
+| `401 Unauthorized` | The server you pointed at requires a token (`BYJG_DOCS_AUTH_TYPE=bearer`); `mcpdocs.byjg.com` does not. Use the **With token** tabs, and check the header is `Authorization: Bearer <TOKEN>` |
 | `404 Not Found` | The URL is missing the `/mcp` path |
 | Timeout / connection refused | The server is unreachable; check `https://mcpdocs.byjg.com/healthz` in a browser |
 | Works in one directory only (Claude Code) | Registered with the default `local` scope; re-add with `--scope user` |
