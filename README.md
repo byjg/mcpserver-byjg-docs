@@ -40,17 +40,28 @@ see [Authentication](docs/development/self-hosting.md#authentication).
 
 ## Add it to your client
 
-| Client | |
-|---|---|
-| Claude Code (CLI) | [instructions](docs/clients.md#claude-code) |
-| Claude Desktop | [instructions](docs/clients.md#claude-desktop) |
-| Codex CLI | [instructions](docs/clients.md#codex-cli) |
-| Gemini CLI | [instructions](docs/clients.md#gemini-cli) |
-| Cursor | [instructions](docs/clients.md#cursor) |
-| VS Code | [instructions](docs/clients.md#vs-code) |
-| JetBrains IDEs | [instructions](docs/clients.md#jetbrains-ides) |
+| Client | Setup | One-click |
+|---|---|---|
+| Claude Code (CLI) | [instructions](docs/clients.md#claude-code) |  |
+| Claude Desktop | [instructions](docs/clients.md#claude-desktop) |  |
+| Codex CLI | [instructions](docs/clients.md#codex-cli) |  |
+| Gemini CLI | [instructions](docs/clients.md#gemini-cli) |  |
+| Cursor | [instructions](docs/clients.md#cursor) | [![Install in Cursor](https://img.shields.io/badge/Install_in-Cursor-000000?style=flat-square&logoColor=white)](https://cursor.com/en/install-mcp?name=com.byjg%2Fdocs&config=eyJ0eXBlIjoiaHR0cCIsInVybCI6Imh0dHBzOi8vbWNwZG9jcy5ieWpnLmNvbS9tY3AifQ==) |
+| VS Code | [instructions](docs/clients.md#vs-code) | [![Install in VS Code](https://img.shields.io/badge/Install_in-VS_Code-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=com.byjg%2Fdocs&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp%22%7D) |
+| VS Code Insiders | [instructions](docs/clients.md#vs-code) | [![Install in VS Code Insiders](https://img.shields.io/badge/Install_in-VS_Code_Insiders-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=com.byjg%2Fdocs&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp%22%7D&quality=insiders) |
+| Visual Studio |  | [![Install in Visual Studio](https://img.shields.io/badge/Install_in-Visual_Studio-C16FDE?style=flat-square&logo=visualstudio&logoColor=white)](https://vs-open.link/mcp-install?%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp%22%7D) |
+| JetBrains IDEs | [instructions](docs/clients.md#jetbrains-ides) |  |
+| Goose |  | [![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?url=https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp&type=streamable_http&id=com.byjg%2Fdocs&name=com.byjg%2Fdocs&description=MCP%20Server%20for%20com.byjg%2Fdocs) |
+| LM Studio |  | [![Add MCP Server com.byjg/docs to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-light.svg)](https://lmstudio.ai/install-mcp?name=com.byjg%2Fdocs&config=eyJ0eXBlIjoiaHR0cCIsInVybCI6Imh0dHBzOi8vbWNwZG9jcy5ieWpnLmNvbS9tY3AifQ==) |
 
-Connection problems: [Troubleshooting](docs/clients.md#troubleshooting).
+The one-click badges hand the endpoint straight to the client, which then
+asks you to confirm; everything else is the manual configuration on the
+[client page](docs/clients.md). Connection problems:
+[Troubleshooting](docs/clients.md#troubleshooting).
+
+Neither path installs from a registry. The server *is* published in the
+official MCP Registry as `com.byjg/docs`, for discovery and provenance: see
+[The MCP Registry entry](docs/registry.md).
 
 ## Tools
 

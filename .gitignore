@@ -7,3 +7,5 @@ __pycache__/
 *.db-shm
 .env
 .idea
+# Private keys, e.g. the MCP Registry DNS signing key. Never commit these.
+*.pem

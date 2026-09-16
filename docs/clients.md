@@ -19,6 +19,10 @@ replace `<TOKEN>` with the token of that server.
 
 The examples name the server `byjg-docs`; any name works.
 
+Every client here is configured by hand. The server is published in the
+official MCP Registry as `com.byjg/docs`, but no editor installs it from there
+-- that entry is for discovery, see [The MCP Registry entry](registry.md).
+
 - [Claude Code](#claude-code)
 - [Claude Desktop](#claude-desktop)
 - [Codex CLI](#codex-cli)
@@ -66,34 +70,44 @@ Remove: `claude mcp remove byjg-docs --scope user`.
 
 ## Claude Desktop
 
-Claude Desktop's config file only launches local (stdio) servers; it has no
-field for a remote URL. Bridge it with
-[`mcp-remote`](https://github.com/geelen/mcp-remote), a small local process
-that forwards the requests. It needs Node.js 18 or later.
-
-Open **Settings > Developer > Edit Config**, which opens
-`claude_desktop_config.json`, and add:
+Claude Desktop takes a remote server's URL directly, as a **custom connector**.
+The same connector works on claude.ai and the mobile apps, and it shows up in
+Claude Code when you are signed in to the same account.
 
 <Tabs groupId="auth">
 <TabItem value="none" label="No token" default>
 
-```json
-{
-  "mcpServers": {
-    "byjg-docs": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcpdocs.byjg.com/mcp"
-      ]
-    }
-  }
-}
+Open **Customize > Connectors**, click **+**, then **Add custom connector**,
+and paste the URL:
+
+```text
+https://mcpdocs.byjg.com/mcp
 ```
+
+Click **Add**. On a Team or Enterprise plan an owner adds it once under
+**Organization settings > Connectors > Add > Custom > Web**; everyone else then
+enables it from **Customize > Connectors**.
+
+To use it in a conversation, click **+** in the chat, open **Connectors** and
+toggle it on. A Free plan is limited to one custom connector; paid plans are
+not.
+
+Claude connects to the server **from Anthropic's cloud, not from your
+machine** -- which is why `mcpdocs.byjg.com` works and a server on your laptop
+or VPN does not.
 
 </TabItem>
 <TabItem value="token" label="With token">
+
+Custom connectors only offer OAuth credentials (client ID and secret) under
+**Advanced settings** -- there is no field for a static `Authorization` header,
+and Anthropic's cloud cannot reach a server on a private network. For a server
+of your own running with `BYJG_DOCS_AUTH_TYPE=bearer`, bridge it locally with
+[`mcp-remote`](https://github.com/geelen/mcp-remote), a small process that
+forwards the requests. It needs Node.js 18 or later.
+
+Open **Settings > Developer > Edit Config**, which opens
+`claude_desktop_config.json`, and add:
 
 ```json
 {
@@ -119,11 +133,11 @@ Write `"Authorization:${AUTH_HEADER}"` exactly like that -- colon, no spaces.
 On Windows, Claude Desktop does not escape spaces inside `args`, so the space
 in `Bearer <TOKEN>` has to live in the `env` value instead.
 
-</TabItem>
-</Tabs>
-
 Restart Claude Desktop completely, then check **Settings > Developer** for the
 server status.
+
+</TabItem>
+</Tabs>
 
 ## Codex CLI
 
