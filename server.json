@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.byjg/docs",
+  "title": "ByJG Open Source Docs",
+  "description": "Search the ByJG open source documentation: PHP, DevOps, Helm, JavaScript and AI projects.",
+  "version": "0.1.0",
+  "websiteUrl": "https://opensource.byjg.com/docs/ai/mcpserver-byjg-docs/",
+  "repository": {
+    "url": "https://github.com/byjg/mcpserver-byjg-docs",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcpdocs.byjg.com/mcp"
+    }
+  ]
+}
