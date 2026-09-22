@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp
+  namespace: byjg-docs
+spec:
+  # Must stay 1. The index is one SQLite file on a ReadWriteOnce volume, and
+  # the refresh job assumes it is the only writer.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mcp
+  template:
+    metadata:
+      labels:
+        app: mcp
+    spec:
+      initContainers:
+        # Replaces the `ollama-init` service of docker-compose.yml: pull the
+        # embedding model into the shared volume before the server starts.
+        # `ollama pull` is idempotent, so this costs nothing once the model is
+        # there. It fails while the Service has no ready endpoint, and the
+        # kubelet retries it -- that retry *is* the wait for ollama.
+        - name: pull-embedding-model
+          image: ollama/ollama:latest
+          command: ["ollama", "pull", "nomic-embed-text"]
+          env:
+            - name: OLLAMA_HOST
+              value: http://ollama:11434
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      containers:
+        - name: mcp
+          # Published by the Build workflow: main -> latest, tag 1.2.3 -> 1.2.3.
+          # Pin a tag in production so a rollout is something you decide.
+          image: byjg/mcpserver-byjg-docs:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: byjg-docs-config
+            - secretRef:
+                name: byjg-docs-secrets
+          # A fresh volume means an empty index, which the server builds in the
+          # background while already answering /healthz. The startup probe is
+          # generous so a slow first clone does not look like a crash loop.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: index
+              mountPath: /data/index
+            - name: logs
+              mountPath: /data/logs
+      volumes:
+        - name: index
+          persistentVolumeClaim:
+            claimName: byjg-docs-index
+        - name: logs
+          persistentVolumeClaim:
+            claimName: byjg-docs-logs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+  namespace: byjg-docs
+spec:
+  type: ClusterIP
+  selector:
+    app: mcp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

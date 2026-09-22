@@ -1,0 +1,73 @@
+# Embedding backend. Only `mcp` talks to it, over the cluster network.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: byjg-docs
+spec:
+  replicas: 1
+  # The model volume is ReadWriteOnce: the old pod must go before the new one
+  # can mount it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - name: http
+              containerPort: 11434
+          env:
+            # Explicit, so the server listens on the pod IP and not just
+            # loopback whatever the image default happens to be.
+            - name: OLLAMA_HOST
+              value: 0.0.0.0:11434
+          # Same check compose uses: the API answers, so the model can be
+          # pulled and embeddings can be requested.
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "ollama list >/dev/null 2>&1"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 4Gi
+              # Uncomment for GPU embedding. Needs the NVIDIA device plugin on
+              # the cluster and a node with a GPU; without it the pod stays
+              # Pending. On CPU the index build is roughly 45x slower -- fine
+              # for serving, slow for the first build.
+              # nvidia.com/gpu: 1
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: byjg-docs
+spec:
+  # The name matters: BYJG_DOCS_OLLAMA_URL is http://ollama:11434.
+  type: ClusterIP
+  selector:
+    app: ollama
+  ports:
+    - name: http
+      port: 11434
+      targetPort: http

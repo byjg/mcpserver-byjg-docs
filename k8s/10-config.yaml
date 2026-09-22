@@ -1,0 +1,46 @@
+# The two halves of what docker-compose.yml keeps in `environment:` and `.env`.
+#
+# The ConfigMap holds what the container fixes -- paths and addresses that
+# describe where things live *inside* the pod -- plus the two values a
+# deployment must set: the public URL and the auth type.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: byjg-docs-config
+  namespace: byjg-docs
+data:
+  BYJG_DOCS_TRANSPORT: "http"
+  BYJG_DOCS_HOST: "0.0.0.0"
+  BYJG_DOCS_PORT: "8080"
+  BYJG_DOCS_INDEX_PATH: /data/index/byjg-docs.db
+  BYJG_DOCS_OLLAMA_URL: http://ollama:11434
+  BYJG_DOCS_QUERY_LOG: /data/logs/queries.jsonl
+  # Indexing a path inside the pod makes no sense: the repo is cloned instead.
+  BYJG_DOCS_DOCS_ROOT: ""
+  # A deployment is reachable from outside the cluster, so it asks for a token.
+  # Set "none" only when something in front authenticates (Cloudflare Access)
+  # or the Ingress is not published. The app refuses to start when `bearer` has
+  # no token.
+  BYJG_DOCS_AUTH_TYPE: bearer
+  # MCP advertises the resource under this URL, so it must be exactly what
+  # clients connect to -- the host in 50-ingress.yaml.
+  BYJG_DOCS_PUBLIC_URL: https://mcpdocs.byjg.com
+---
+# Do not commit real values. Either replace the placeholders on a copy that
+# stays out of git, or delete this document and create the Secret directly:
+#
+#   kubectl -n byjg-docs create secret generic byjg-docs-secrets \
+#     --from-literal=BYJG_DOCS_AUTH_TOKEN="$(openssl rand -hex 32)" \
+#     --from-literal=BYJG_DOCS_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: byjg-docs-secrets
+  namespace: byjg-docs
+type: Opaque
+stringData:
+  # Bearer token clients send. Required by BYJG_DOCS_AUTH_TYPE=bearer.
+  BYJG_DOCS_AUTH_TOKEN: REPLACE_ME
+  # Shared secret of the GitHub push webhook. Empty disables POST
+  # /webhook/github entirely rather than leaving it unauthenticated.
+  BYJG_DOCS_WEBHOOK_SECRET: REPLACE_ME

@@ -1,0 +1,43 @@
+# Published through ByJG EasyHAProxy, which watches Ingress objects whose
+# ingressClassName is `easyhaproxy` and rewrites haproxy.cfg for them.
+# https://opensource.byjg.com/docs/devops/docker-easy-haproxy/getting-started/kubernetes
+#
+# There is no `tls:` block on purpose: with `easyhaproxy.certbot` the proxy
+# obtains the certificate and terminates TLS itself, and the backend keeps
+# speaking plain HTTP on 8080. Do not configure TLS in the server too.
+#
+# The annotations apply to every host in this Ingress.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: byjg-docs
+  namespace: byjg-docs
+  annotations:
+    # Ask for a Let's Encrypt certificate for the hosts below. EasyHAProxy only
+    # requests one when EASYHAPROXY_CERTBOT_EMAIL is set on the EasyHAProxy
+    # deployment, and ports 80 and 443 must be reachable from the internet.
+    easyhaproxy.certbot: "true"
+    # Send plain HTTP to HTTPS. The bearer token must never cross port 80.
+    easyhaproxy.redirect_ssl: "true"
+    # Defaults, here to show the knobs that exist:
+    # easyhaproxy.mode: http          # or tcp
+    # easyhaproxy.listen_port: "80"   # HTTP listener this ingress is created on
+    # easyhaproxy.plugins: "cloudflare"
+spec:
+  ingressClassName: easyhaproxy
+  rules:
+      # Must match BYJG_DOCS_PUBLIC_URL in 10-config.yaml.
+    - host: mcpdocs.byjg.com
+      http:
+        paths:
+          # One rule covers everything the server serves on 8080:
+          #   /mcp             the MCP endpoint clients connect to
+          #   /healthz         the health check
+          #   /webhook/github  the GitHub push webhook
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp
+                port:
+                  number: 8080
