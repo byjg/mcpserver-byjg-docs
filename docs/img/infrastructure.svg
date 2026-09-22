@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 660" width="880" role="img"
-     aria-label="Infrastructure topology: Cloudflare edge reaches cloudflared through an outbound tunnel; cloudflared reaches the MCP server, which talks to Ollama. Three Docker volumes hold the model, the repo and the index.">
+     aria-label="Infrastructure topology: Cloudflare edge reaches cloudflared through an outbound tunnel; cloudflared reaches the MCP server, which talks to Ollama. Three Docker volumes hold the index, the query log and the model; the documentation repository is a temporary checkout.">
   <style>
     
     
@@ -82,7 +82,7 @@
   <rect class="abox" x="270" y="338" width="340" height="88"/>
   <text class="t" x="440" y="361" text-anchor="middle">mcp</text>
   <text class="mono" x="440" y="381" text-anchor="middle">/mcp · /webhook/github · /healthz</text>
-  <text class="s" x="440" y="401" text-anchor="middle">bearer token required off loopback</text>
+  <text class="s" x="440" y="401" text-anchor="middle">auth: bearer (compose default) or none</text>
   <text class="mono" x="440" y="418" text-anchor="middle">127.0.0.1:2954  (local clients)</text>
 
   <!-- local client -->
@@ -102,24 +102,30 @@
 
   <!-- volumes -->
   <text class="hdr" x="60" y="470">STORAGE</text>
-  <rect class="dbox" x="325" y="482" width="230" height="66"/>
-  <text class="t" x="440" y="504" text-anchor="middle">index</text>
-  <text class="s" x="440" y="522" text-anchor="middle">byjg-docs.db · 24 MB</text>
-  <text class="s" x="440" y="538" text-anchor="middle">rebuildable in ~60s</text>
+  <rect class="box" x="60" y="482" width="175" height="66" stroke-dasharray="5 4"/>
+  <text class="t" x="147" y="504" text-anchor="middle">tmp checkout</text>
+  <text class="s" x="147" y="522" text-anchor="middle">shallow clone per refresh</text>
+  <text class="s" x="147" y="538" text-anchor="middle">deleted afterwards</text>
 
-  <rect class="dbox" x="590" y="482" width="230" height="66"/>
-  <text class="t" x="705" y="504" text-anchor="middle">ollama</text>
-  <text class="s" x="705" y="522" text-anchor="middle">model weights</text>
-  <text class="s" x="705" y="538" text-anchor="middle">pulled once at first boot</text>
+  <rect class="dbox" x="255" y="482" width="175" height="66"/>
+  <text class="t" x="342" y="504" text-anchor="middle">index</text>
+  <text class="s" x="342" y="522" text-anchor="middle">byjg-docs.db · 24 MB</text>
+  <text class="s" x="342" y="538" text-anchor="middle">rebuildable in ~60s</text>
 
-  <rect class="box" x="60" y="482" width="230" height="66" stroke-dasharray="5 4"/>
-  <text class="t" x="175" y="504" text-anchor="middle">tmp checkout</text>
-  <text class="s" x="175" y="522" text-anchor="middle">shallow clone per refresh</text>
-  <text class="s" x="175" y="538" text-anchor="middle">deleted afterwards</text>
+  <rect class="dbox" x="450" y="482" width="175" height="66"/>
+  <text class="t" x="537" y="504" text-anchor="middle">logs</text>
+  <text class="s" x="537" y="522" text-anchor="middle">queries.jsonl</text>
+  <text class="s" x="537" y="538" text-anchor="middle">rotated at 10 MB, 5 kept</text>
 
-  <path class="dash sk-data" d="M 440 426 L 440 476" marker-end="url(#ad)"/>
-  <path class="dash sk-net" d="M 340 426 L 200 426 Q 188 426 188 438 L 188 476" marker-end="url(#an)"/>
-  <path class="dash sk-data" d="M 730 426 L 730 476" marker-end="url(#ad)"/>
+  <rect class="dbox" x="645" y="482" width="175" height="66"/>
+  <text class="t" x="732" y="504" text-anchor="middle">ollama</text>
+  <text class="s" x="732" y="522" text-anchor="middle">model weights</text>
+  <text class="s" x="732" y="538" text-anchor="middle">pulled once at first boot</text>
+
+  <path class="dash sk-net" d="M 290 426 L 160 426 Q 148 426 148 438 L 148 476" marker-end="url(#an)"/>
+  <path class="dash sk-data" d="M 342 426 L 342 476" marker-end="url(#ad)"/>
+  <path class="dash sk-data" d="M 537 426 L 537 476" marker-end="url(#ad)"/>
+  <path class="dash sk-data" d="M 732 426 L 732 476" marker-end="url(#ad)"/>
 
   <!-- webhook -->
   <rect class="box" x="60" y="568" width="760" height="52"/>

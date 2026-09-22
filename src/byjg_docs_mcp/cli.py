@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
 
+from .config import load_settings
+from .querylog import read_log, weak_signals
 from .runtime import build_runtime
 
 
@@ -29,7 +32,20 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("stats", help="show what is indexed")
 
+    queries = sub.add_parser(
+        "queries", help="report on the query log (BYJG_DOCS_QUERY_LOG)"
+    )
+    queries.add_argument(
+        "--weak", action="store_true", help="list the searches the documentation answered badly"
+    )
+    queries.add_argument("-n", "--limit", type=int, default=20)
+    queries.add_argument("--log", help="log file to read (default: BYJG_DOCS_QUERY_LOG)")
+
     args = parser.parse_args(argv)
+    if args.command == "queries":
+        # Reads a file only: no index and no embedding model are needed.
+        return report_queries(args.log or load_settings().query_log, args.weak, args.limit)
+
     runtime = build_runtime()
     try:
         if args.command == "build":
@@ -58,6 +74,44 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {p.category}/{p.project or '-'}: {p.documents} docs, {p.chunks} chunks")
     finally:
         runtime.close()
+    return 0
+
+
+def report_queries(path: str, weak: bool, limit: int) -> int:
+    if not path:
+        print("no query log: set BYJG_DOCS_QUERY_LOG or pass --log", file=sys.stderr)
+        return 2
+    entries = read_log(path)
+    if not entries:
+        print(f"no entries in {path}")
+        return 0
+
+    if not weak:
+        print(f"{len(entries)} calls, {entries[0].get('ts')} to {entries[-1].get('ts')}")
+        for tool, count in Counter(e.get("tool") for e in entries).most_common():
+            print(f"  {tool}: {count}")
+        return 0
+
+    signals = weak_signals(entries, limit)
+    sections = [
+        ("Searches with no hits", [f"{n}x  {q}" for q, n in signals.no_hits]),
+        (
+            "Weakest searches, lowest top_score first",
+            [f"{score:.4f}  {q}" for score, q in signals.weakest],
+        ),
+        (
+            "Best hit found only by the vector ranker",
+            [f"{n}x  {q}" for q, n in signals.vector_only],
+        ),
+        (
+            "Documents requested that do not exist",
+            [f"{n}x  {source}" for source, n in signals.missing_documents],
+        ),
+    ]
+    for title, lines in sections:
+        print(title)
+        for line in lines or ["(none)"]:
+            print(f"  {line}")
     return 0
 
 
