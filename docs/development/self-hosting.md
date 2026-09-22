@@ -464,8 +464,22 @@ Its purpose is finding what the documentation does not cover. The signals:
 - **`get_document` with `found: false`** -- the model asked for a page that
   does not exist.
 
-The image has no `jq`, so stream the file out and filter on the host
-(`queries.jsonl*` includes the rotated files):
+The quickest way to read it is the `queries` command, which runs inside the
+container and reads the rotated files too:
+
+```bash
+# Calls per tool, and the period the log covers
+docker exec mcpserver-byjg-docs-mcp-1 byjg-docs-index queries
+
+# The four signals above: no hits, weakest scores, vector-only hits,
+# documents that do not exist (-n sets how many of each, default 20)
+docker exec mcpserver-byjg-docs-mcp-1 byjg-docs-index queries --weak
+```
+
+`--weak` ranks searches by their best score instead of cutting at a threshold,
+and counts a query asked several times once, at its lowest score. For
+questions the command does not answer, the image has no `jq`, so stream the
+file out and filter on the host (`queries.jsonl*` includes the rotated files):
 
 ```bash
 qlog() { docker exec mcpserver-byjg-docs-mcp-1 sh -c 'cat /data/logs/queries.jsonl*'; }

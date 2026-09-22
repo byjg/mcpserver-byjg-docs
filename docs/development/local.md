@@ -114,6 +114,20 @@ uv run byjg-docs-index stats
   ...
 ```
 
+## Reading the query log
+
+When `BYJG_DOCS_QUERY_LOG` names a file, every tool call is recorded there.
+`queries` reads it back, without touching the index or Ollama:
+
+```bash
+uv run byjg-docs-index queries                 # calls per tool, and the period covered
+uv run byjg-docs-index queries --weak -n 10    # where the documentation answered badly
+uv run byjg-docs-index queries --log path/to/queries.jsonl
+```
+
+What the `--weak` sections mean is in
+[the query log section of the self-hosting guide](self-hosting.md#query-log).
+
 ## Connecting a client over stdio
 
 With stdio the MCP client spawns the server process and talks to it over
