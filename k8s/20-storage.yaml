@@ -1,0 +1,41 @@
+# The three named volumes of docker-compose.yml. All ReadWriteOnce: each is
+# written by exactly one pod, and the index is a single SQLite file.
+#
+# storageClassName is left out on purpose, so the cluster's default class is
+# used. Set it if you need a specific one.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: byjg-docs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Rebuildable: the docs are re-cloned on each refresh and the index is rebuilt
+# from them in about a minute. Losing this volume costs time, not data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: byjg-docs-index
+  namespace: byjg-docs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+# The query log is the one thing here that cannot be rebuilt, so it lives
+# apart from the disposable index.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: byjg-docs-logs
+  namespace: byjg-docs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
