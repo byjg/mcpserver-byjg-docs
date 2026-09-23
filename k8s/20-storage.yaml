@@ -25,7 +25,7 @@ spec:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
 ---
 # The query log is the one thing here that cannot be rebuilt, so it lives
 # apart from the disposable index.

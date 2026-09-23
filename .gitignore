@@ -9,3 +9,4 @@ __pycache__/
 .idea
 # Private keys, e.g. the MCP Registry DNS signing key. Never commit these.
 *.pem
+*-config.yaml

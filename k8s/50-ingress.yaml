@@ -2,9 +2,13 @@
 # ingressClassName is `easyhaproxy` and rewrites haproxy.cfg for them.
 # https://opensource.byjg.com/docs/devops/docker-easy-haproxy/getting-started/kubernetes
 #
-# There is no `tls:` block on purpose: with `easyhaproxy.certbot` the proxy
-# obtains the certificate and terminates TLS itself, and the backend keeps
-# speaking plain HTTP on 8080. Do not configure TLS in the server too.
+# Cloudflare sits in front and terminates the public TLS, then reaches this
+# Ingress over plain HTTP on port 80. So there is no `tls:` block, no
+# `easyhaproxy.certbot` and no `easyhaproxy.redirect_ssl`:
+#   - EasyHAProxy only listens on 443 once it has a certificate; none is needed.
+#   - Redirecting to HTTPS here would loop, since Cloudflare comes back over
+#     HTTP. Enable "Always Use HTTPS" in Cloudflare instead.
+# The hop Cloudflare -> EasyHAProxy -> mcp is plain HTTP inside the network.
 #
 # The annotations apply to every host in this Ingress.
 apiVersion: networking.k8s.io/v1
@@ -13,14 +17,8 @@ metadata:
   name: byjg-docs
   namespace: byjg-docs
   annotations:
-    # Ask for a Let's Encrypt certificate for the hosts below. EasyHAProxy only
-    # requests one when EASYHAPROXY_CERTBOT_EMAIL is set on the EasyHAProxy
-    # deployment, and ports 80 and 443 must be reachable from the internet.
-    easyhaproxy.certbot: "true"
-    # Send plain HTTP to HTTPS. The bearer token must never cross port 80.
-    easyhaproxy.redirect_ssl: "true"
     # Defaults, here to show the knobs that exist:
-    # easyhaproxy.mode: http          # or tcp
+    easyhaproxy.mode: http          # or tcp
     # easyhaproxy.listen_port: "80"   # HTTP listener this ingress is created on
     # easyhaproxy.plugins: "cloudflare"
 spec:

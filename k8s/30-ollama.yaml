@@ -6,10 +6,16 @@ metadata:
   namespace: byjg-docs
 spec:
   replicas: 1
-  # The model volume is ReadWriteOnce: the old pod must go before the new one
-  # can mount it.
+  # The new pod starts and turns ready before the old one stops, so embeddings
+  # never go away during a deploy. Both pods share the model volume for that
+  # moment: ReadWriteOnce is per node, not per pod, and the models are only
+  # read once pulled. Same node requirement and caveat as `mcp` in
+  # 40-mcp.yaml; the node also needs room for a second ollama for the overlap.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: ollama
