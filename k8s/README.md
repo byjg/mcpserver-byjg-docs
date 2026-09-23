@@ -11,11 +11,15 @@ kubectl -n byjg-docs create secret generic byjg-docs-secrets \
   --from-literal=BYJG_DOCS_AUTH_TOKEN="$(openssl rand -hex 32)" \
   --from-literal=BYJG_DOCS_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 
-# 2. Everything else (delete the Secret document in 10-config.yaml first, or
-#    it overwrites what you just created with REPLACE_ME)
+# 2. The config, kept out of git (*-config.yaml is ignored). Delete its Secret
+#    document, or it overwrites what you just created with REPLACE_ME.
+cp k8s/10-config.yaml.example k8s/10-config.yaml
+
+# 3. Everything else. kubectl reads only .yaml/.yml/.json, so the .example is
+#    skipped.
 kubectl apply -f k8s/
 
-# 3. Watch the first index build -- a clone plus ~4,100 embeddings
+# 4. Watch the first index build -- a clone plus ~4,100 embeddings
 kubectl -n byjg-docs logs -f deploy/mcp
 ```
 
