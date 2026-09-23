@@ -7,8 +7,17 @@ spec:
   # Must stay 1. The index is one SQLite file on a ReadWriteOnce volume, and
   # the refresh job assumes it is the only writer.
   replicas: 1
+  # The new pod starts and turns ready before the old one stops, so a deploy
+  # has no downtime. The overlap is safe: ReadWriteOnce is per node, not per
+  # pod, and a pod only writes the index on a refresh (SQLite runs in WAL
+  # mode). Both pods must land on the same node -- automatic with node-local
+  # storage (local-path); with network block storage a new pod elsewhere hits
+  # "Multi-Attach error" and the rollout stalls while the old pod keeps serving.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: mcp
