@@ -27,6 +27,8 @@ official MCP Registry as `com.byjg/docs`, but no editor installs it from there
 - [Claude Desktop](#claude-desktop)
 - [Codex CLI](#codex-cli)
 - [Gemini CLI](#gemini-cli)
+- [Qwen Code](#qwen-code)
+- [Kilo CLI](#kilo-cli)
 - [Cursor](#cursor)
 - [VS Code](#vs-code)
 - [JetBrains IDEs](#jetbrains-ides)
@@ -226,6 +228,125 @@ Or edit `~/.gemini/settings.json` directly. Note the key is **`httpUrl`**;
 </Tabs>
 
 Verify: `gemini mcp list`.
+
+## Qwen Code
+
+Qwen Code is a fork of Gemini CLI and reads the same format, from
+`~/.qwen/settings.json`:
+
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
+```bash
+qwen mcp add --transport http --scope user --trust \
+  byjg-docs https://mcpdocs.byjg.com/mcp
+```
+
+Or edit `~/.qwen/settings.json` directly. As in Gemini CLI, the key is
+**`httpUrl`**; `url` means the older SSE transport:
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "httpUrl": "https://mcpdocs.byjg.com/mcp",
+      "trust": true
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```bash
+qwen mcp add --transport http --scope user --trust \
+  --header "Authorization: Bearer <TOKEN>" \
+  byjg-docs https://your-server.example.com/mcp
+```
+
+Or edit `~/.qwen/settings.json` directly. As in Gemini CLI, the key is
+**`httpUrl`**; `url` means the older SSE transport:
+
+```json
+{
+  "mcpServers": {
+    "byjg-docs": {
+      "httpUrl": "https://your-server.example.com/mcp",
+      "trust": true,
+      "headers": {
+        "Authorization": "Bearer <TOKEN>"
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+`trust` skips the confirmation prompt on every tool call (in a trusted
+workspace). The tools only read public documentation, so there is nothing to
+confirm; drop it if you would rather approve each call.
+
+Verify: `qwen mcp list`, or `/mcp` inside a session.
+
+## Kilo CLI
+
+Kilo CLI names the key `mcp` and marks a remote server with
+`"type": "remote"`. Add to `~/.config/kilo/kilo.json` (or `kilo.jsonc`):
+
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
+```json
+{
+  "mcp": {
+    "byjg-docs": {
+      "type": "remote",
+      "url": "https://mcpdocs.byjg.com/mcp",
+      "enabled": true
+    }
+  },
+  "permission": {
+    "byjg-docs_*": "allow"
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```json
+{
+  "mcp": {
+    "byjg-docs": {
+      "type": "remote",
+      "url": "https://your-server.example.com/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:BYJG_DOCS_TOKEN}"
+      }
+    }
+  },
+  "permission": {
+    "byjg-docs_*": "allow"
+  }
+}
+```
+
+`{env:BYJG_DOCS_TOKEN}` keeps the token out of the file: export it before
+starting Kilo. A literal `"Bearer <TOKEN>"` works too.
+
+</TabItem>
+</Tabs>
+
+Kilo exposes the tools as `byjg-docs_search_docs`, `byjg-docs_get_document`
+and so on; the `byjg-docs_*` rule lets them run without asking. If your config
+already has `"*": "ask"`, put the rule **after** it -- the last matching rule
+wins.
+
+Verify: `kilo mcp list`.
 
 ## Cursor
 
