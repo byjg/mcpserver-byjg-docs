@@ -377,7 +377,7 @@ public URL and project.
 
 - `query` -- natural language or an exact symbol name; both work
 - `limit` -- defaults to 8, capped at 25
-- `category` -- `php`, `devops`, `js`, `ai`, `helm`, ...
+- `category` -- `php`, `devops`, `js`, `ai`, `helm`, or `blog` for blog posts
 - `project` -- `micro-orm`, `restserver`, `docker-easy-haproxy`, ...
 
 ### `get_document(source_path)`

@@ -6,8 +6,9 @@ tags: [ai, python, docker]
 # ByJG Docs MCP Server
 
 An [MCP](https://modelcontextprotocol.io) server that gives AI assistants
-semantic search over the documentation of every ByJG open source project --
-the same content published at [opensource.byjg.com](https://opensource.byjg.com).
+semantic search over the documentation of every ByJG open source project, and
+the blog -- the same content published at
+[opensource.byjg.com](https://opensource.byjg.com).
 
 Connect your assistant and it can answer questions about the ByJG libraries
 (MicroOrm, RestServer, Gluo, EasyHAProxy, ...) and cite the documentation page
@@ -72,8 +73,9 @@ official MCP Registry as `com.byjg/docs`, for discovery and provenance: see
 | `list_projects()` | Inventory of what is indexed |
 
 `query` accepts natural language ("how do I map a table to a class") or an
-exact symbol name (`TableAttribute`) -- both work. See
-[the tools in detail](docs/clients.md#the-tools).
+exact symbol name (`TableAttribute`) -- both work. `category` narrows the
+search: the technology areas (`php`, `devops`, `js`, `ai`, `helm`) or `blog`.
+See [the tools in detail](docs/clients.md#the-tools).
 
 ## Privacy
 

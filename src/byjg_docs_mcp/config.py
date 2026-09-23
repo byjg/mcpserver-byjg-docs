@@ -2,13 +2,62 @@
 
 from __future__ import annotations
 
+import logging
+import re
+
 from pathlib import Path
 
-from pydantic import field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 #: Ways the HTTP transport can authenticate a client.
 AUTH_TYPES = {"none", "bearer"}
+
+#: A source name is a path segment of every source_path it produces.
+NAME_RE = re.compile(r"[A-Za-z0-9._-]+")
+
+
+class Source(BaseModel):
+    """One folder of the site repository, indexed into the shared index.
+
+    A source is the unit everything else is scoped by: `name` prefixes every
+    `source_path`, which keeps two folders from colliding on the same relative
+    path and lets a refresh delete only what belongs to the folder it walked.
+    """
+
+    #: Prefix of every source_path from this folder, e.g. "docs/php/..." .
+    name: str
+    #: Folder inside the repository. "" indexes the repository root.
+    subdir: str
+    #: Route the site publishes it under: /docs/... or /blog/... .
+    route: str
+    #: Forces the category instead of deriving it from the folder layout.
+    #: The reference docs nest as category/project/page.md; the blog is flat,
+    #: so its posts would otherwise have no category to filter on.
+    category: str = ""
+
+    @property
+    def prefix(self) -> str:
+        return f"{self.name}/"
+
+    @field_validator("name")
+    @classmethod
+    def _usable_as_a_path_prefix(cls, value: str) -> str:
+        """A name becomes a path segment, so it has to look like one."""
+        if not NAME_RE.fullmatch(value):
+            raise ValueError(
+                f"source name {value!r} must be letters, digits, dot, dash or "
+                "underscore: it prefixes every source_path"
+            )
+        return value
+
+
+DEFAULT_SOURCES = [
+    Source(name="docs", subdir="docs", route="docs"),
+    Source(name="blog", subdir="blog", route="blog", category="blog"),
+]
 
 
 class Settings(BaseSettings):
@@ -22,15 +71,70 @@ class Settings(BaseSettings):
     # permanent working copy anywhere.
     repo_url: str = "https://github.com/byjg/byjg.github.io"
     git_branch: str = "master"
-    #: Folder inside the repository holding the documentation.
-    docs_subdir: str = "docs"
+    #: Folders of the repository to index, as JSON in BYJG_DOCS_SOURCES:
+    #:   [{"name": "docs", "subdir": "docs", "route": "docs"}]
+    #: Defaults to the reference documentation plus the blog.
+    sources: list[Source] = Field(default_factory=lambda: list(DEFAULT_SOURCES))
+    #: Deprecated, folded into the first source: use `sources` instead.
+    docs_subdir: str = ""
     #: Set this to index a tree already on disk instead of cloning. Intended for
     #: local development against an editable checkout; leave it unset in any
     #: deployment, so GitHub stays the only source.
     docs_root: Path | None = None
 
     site_url: str = "https://opensource.byjg.com"
-    docs_route: str = "docs"
+    #: Deprecated, folded into the first source: use `sources` instead.
+    docs_route: str = ""
+
+    @model_validator(mode="after")
+    def _sources_are_usable(self) -> "Settings":
+        """Reject the two configurations that would break indexing silently.
+
+        Nothing to index is a misconfiguration, not an empty corpus. Two
+        sources sharing a name share a source_path prefix, which puts back the
+        bug the prefix exists to prevent: each refresh would see the other's
+        documents as deleted.
+        """
+        if not self.sources:
+            raise ValueError("no sources configured: nothing would be indexed")
+        names = [s.name for s in self.sources]
+        duplicated = {n for n in names if names.count(n) > 1}
+        if duplicated:
+            raise ValueError(
+                f"source names must be unique, got {sorted(duplicated)}: two "
+                "sources sharing a name would delete each other's documents"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _fold_legacy_docs_folder(self) -> "Settings":
+        """Keep BYJG_DOCS_DOCS_SUBDIR / _DOCS_ROUTE working for one release.
+
+        They described the single folder this server used to index. Setting
+        either now means "index just that one", which is what an existing .env
+        meant when it was written.
+        """
+        if not (self.docs_subdir or self.docs_route):
+            return self
+        if "sources" in self.model_fields_set:
+            # An explicit `sources` is the newer, clearer statement of intent:
+            # a leftover variable in a .env file must not quietly undo it.
+            logger.warning(
+                "BYJG_DOCS_SOURCES and the deprecated BYJG_DOCS_DOCS_SUBDIR/"
+                "_DOCS_ROUTE are both set; the deprecated pair is ignored."
+            )
+            return self
+        subdir = self.docs_subdir or "docs"
+        route = self.docs_route or subdir or "docs"
+        object.__setattr__(
+            self, "sources", [Source(name=subdir or "docs", subdir=subdir, route=route)]
+        )
+        logger.warning(
+            "BYJG_DOCS_DOCS_SUBDIR/BYJG_DOCS_DOCS_ROUTE are deprecated; "
+            "indexing only %r. Use BYJG_DOCS_SOURCES instead.",
+            subdir,
+        )
+        return self
 
     @field_validator("docs_root", mode="before")
     @classmethod
