@@ -76,9 +76,15 @@ invalidate stored vectors in ways the content hash cannot detect.
 ### Indexing a local checkout
 
 To index documentation you are editing, without pushing it first, point
-`BYJG_DOCS_DOCS_ROOT` at your checkout of `byjg.github.io/docs`. Nothing is
-cloned; that tree is indexed in place. This is a development convenience --
-leave it unset in any deployment so GitHub remains the only source.
+`BYJG_DOCS_DOCS_ROOT` at your checkout of `byjg.github.io` -- the **repository
+root**, so each [source](configuration.md#sources) finds its folder inside it.
+Nothing is cloned; those trees are indexed in place. This is a development
+convenience -- leave it unset in any deployment so GitHub remains the only
+source.
+
+A tree that *is* the docs folder still works when one single source is
+configured, which is what the deprecated `BYJG_DOCS_DOCS_SUBDIR` leaves you
+with.
 
 ## Searching from the terminal
 

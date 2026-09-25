@@ -33,16 +33,35 @@ class TestSignature:
 class TestDocsFilter:
     def test_push_touching_docs_triggers(self):
         payload = {"commits": [{"added": [], "modified": ["docs/php/micro-orm/a.md"], "removed": []}]}
-        assert _touches_docs(payload, "docs/")
+        assert _touches_docs(payload, ("docs/",))
 
     def test_deleted_doc_triggers(self):
         payload = {"commits": [{"added": [], "modified": [], "removed": ["docs/php/old.md"]}]}
-        assert _touches_docs(payload, "docs/")
+        assert _touches_docs(payload, ("docs/",))
 
     def test_push_touching_only_build_files_is_ignored(self):
         payload = {"commits": [{"added": [], "modified": ["package-lock.json"], "removed": []}]}
-        assert not _touches_docs(payload, "docs/")
+        assert not _touches_docs(payload, ("docs/",))
 
     def test_push_with_no_commits_is_ignored(self):
-        assert not _touches_docs({"commits": []}, "docs/")
-        assert not _touches_docs({}, "docs/")
+        assert not _touches_docs({"commits": []}, ("docs/",))
+        assert not _touches_docs({}, ("docs/",))
+
+
+class TestSeveralSourcePrefixes:
+    """One prefix per indexed source: a blog-only push must refresh too."""
+
+    PREFIXES = ("docs/", "blog/")
+
+    def test_push_touching_only_the_blog_triggers(self):
+        payload = {"commits": [{"added": ["blog/2025-09-09-post.md"], "modified": [], "removed": []}]}
+        assert _touches_docs(payload, self.PREFIXES)
+
+    def test_push_touching_neither_is_still_ignored(self):
+        payload = {"commits": [{"added": [], "modified": ["package-lock.json"], "removed": []}]}
+        assert not _touches_docs(payload, self.PREFIXES)
+
+    def test_a_source_indexing_the_whole_repository_takes_every_push(self):
+        """An empty subdir means the root: there is nothing left to filter on."""
+        payload = {"commits": [{"added": [], "modified": ["package-lock.json"], "removed": []}]}
+        assert _touches_docs(payload, ("",))

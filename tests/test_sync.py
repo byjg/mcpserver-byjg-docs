@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from byjg_docs_mcp.config import Settings
+from byjg_docs_mcp.config import Settings, Source
 from byjg_docs_mcp.runtime import Runtime
 from byjg_docs_mcp.sync import CloneError, ReindexJob, clone_docs
 
@@ -24,6 +24,10 @@ def origin(tmp_path):
     run(["git", "config", "user.name", "t"], work)
     (work / "docs").mkdir()
     (work / "docs" / "a.md").write_text("# A\n\n" + "body of the page. " * 20)
+    (work / "blog").mkdir()
+    (work / "blog" / "2025-09-09-post.md").write_text(
+        "---\nslug: a-post\ntitle: A Post\n---\n\n" + "what I learned. " * 20
+    )
     (work / "README.md").write_text("not documentation")
     run(["git", "add", "-A"], work)
     run(["git", "commit", "-m", "init"], work)
@@ -72,8 +76,13 @@ class TestCloneDocs:
                 pass
 
 
+DOCS = Source(name="docs", subdir="docs", route="docs")
+BLOG = Source(name="blog", subdir="blog", route="blog", category="blog")
+
+
 class TestRefresh:
     def _runtime(self, store, embedder, **kw):
+        kw.setdefault("sources", [DOCS])
         return Runtime(settings=Settings(**kw), embedder=embedder, store=store)
 
     def test_indexes_what_it_cloned(self, origin, store, embedder):
@@ -83,7 +92,7 @@ class TestRefresh:
 
         assert report.indexed == 1
         assert store.stats()["documents"] == 1
-        assert store.get_document("a.md") is not None
+        assert store.get_document("docs/a.md") is not None
 
     def test_second_refresh_is_incremental_despite_a_fresh_clone(
         self, origin, store, embedder
@@ -150,3 +159,55 @@ class TestDocsRootBlank:
     def test_a_real_path_still_enables_local_mode(self, tmp_path):
         s = Settings(docs_root=tmp_path)
         assert s.local_docs is True
+
+
+class TestSeveralSources:
+    def _runtime(self, store, embedder, **kw):
+        return Runtime(settings=Settings(**kw), embedder=embedder, store=store)
+
+    def test_one_clone_feeds_every_source(self, origin, store, embedder):
+        bare, _ = origin
+        rt = self._runtime(
+            store, embedder, repo_url=str(bare), git_branch="master", sources=[DOCS, BLOG]
+        )
+
+        report = ReindexJob(rt).refresh()
+
+        assert report.indexed == 2, "the report totals every source"
+        assert store.get_document("docs/a.md") is not None
+        assert store.get_document("blog/2025-09-09-post.md") is not None
+
+    def test_refreshing_twice_keeps_both_sources(self, origin, store, embedder):
+        """Each source cleans up after itself and leaves the others alone."""
+        bare, _ = origin
+        rt = self._runtime(
+            store, embedder, repo_url=str(bare), git_branch="master", sources=[DOCS, BLOG]
+        )
+        ReindexJob(rt).refresh()
+
+        report = ReindexJob(rt).refresh()
+
+        assert (report.indexed, report.deleted) == (0, 0)
+        assert store.stats()["documents"] == 2
+
+    def test_a_missing_folder_is_skipped_not_fatal(self, origin, store, embedder, caplog):
+        bare, _ = origin
+        absent = Source(name="guides", subdir="guides", route="guides")
+        rt = self._runtime(
+            store, embedder, repo_url=str(bare), git_branch="master", sources=[DOCS, absent]
+        )
+
+        report = ReindexJob(rt).refresh()
+
+        assert report.indexed == 1, "the folder that exists is still indexed"
+        assert "guides" in caplog.text
+
+    def test_no_source_at_all_is_a_misconfiguration(self, origin, store, embedder):
+        bare, _ = origin
+        absent = Source(name="guides", subdir="guides", route="guides")
+        rt = self._runtime(
+            store, embedder, repo_url=str(bare), git_branch="master", sources=[absent]
+        )
+
+        with pytest.raises(CloneError, match="no configured source"):
+            ReindexJob(rt).refresh()

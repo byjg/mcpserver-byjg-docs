@@ -9,9 +9,10 @@ public server, you do not need any of this -- see [Connecting a client](../clien
 
 ## What it is
 
-The server turns the ~550 markdown files in
-[`byjg/byjg.github.io/docs`](https://github.com/byjg/byjg.github.io) into
-~4,100 searchable passages and exposes them to an LLM through three MCP tools.
+The server turns the ~575 markdown files in
+[`byjg/byjg.github.io`](https://github.com/byjg/byjg.github.io) -- the `docs`
+folder and the blog -- into ~4,400 searchable passages and exposes them to an
+LLM through three MCP tools.
 
 ![Data flow: the write path indexes markdown into the store; the read path answers MCP queries. Both meet at the embedder and the store.](../img/data-flow.svg)
 

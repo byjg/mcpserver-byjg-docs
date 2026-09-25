@@ -6,10 +6,17 @@ sidebar_position: 5
 
 ## What this is
 
-A retrieval service over the ByJG documentation. It turns ~550 markdown files
-into ~4,100 searchable passages and exposes them to an LLM through three MCP
+A retrieval service over the ByJG documentation. It turns ~575 markdown files
+into ~4,400 searchable passages and exposes them to an LLM through three MCP
 tools. The LLM asks a question in natural language; it gets back passages with
 their public URLs so it can cite them.
+
+The corpus is a set of **sources** -- folders of the site repository, the
+reference documentation and the blog by default -- indexed into one store, so
+one search spans them. A source names the prefix of every `source_path` it
+produces (`docs/php/micro-orm/active-record.md`, `blog/2025-09-26-post/index.md`),
+which keeps two folders from colliding and lets a refresh recognise which rows
+are its own to clean up. See [Sources](configuration.md#sources).
 
 ## The shape of the problem
 
@@ -17,8 +24,8 @@ Two numbers drove almost every decision:
 
 | | Value |
 |---|---|
-| Documents | 549 markdown files |
-| Passages after chunking | 4,136 |
+| Documents | 575 markdown files (566 docs, 9 blog posts) |
+| Passages after chunking | 4,405 |
 | Vectors (768 dims, float32) | ~13 MB |
 | Whole index on disk | 24 MB |
 
@@ -155,7 +162,7 @@ The `AND` keeps the spelled-out form from matching every page that merely says
 | `runtime.py` | Wires config into concrete components. |
 | `server.py` | The three MCP tools and the transports. |
 | `sync.py` | Clone into a temporary directory → reindex → discard; one run at a time. |
-| `webhook.py` | GitHub push → signature and path checks → triggers `sync`. `/healthz`. |
+| `webhook.py` | GitHub push → signature and per-source path checks → triggers `sync`. `/healthz`. |
 | `querylog.py` | One JSON line per tool call, to find what the docs do not cover. |
 | `cli.py` | `build`, `search`, `stats`. |
 
