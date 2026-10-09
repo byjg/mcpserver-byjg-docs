@@ -65,10 +65,48 @@ warns on every start when it is `none` on a non-loopback address.
 |---|---|---|
 | `BYJG_DOCS_REPO_URL` | `https://github.com/byjg/byjg.github.io` | Source of truth, cloned on each refresh |
 | `BYJG_DOCS_GIT_BRANCH` | `master` | Branch to clone |
-| `BYJG_DOCS_DOCS_SUBDIR` | `docs` | Folder inside the repository holding the documentation |
+| `BYJG_DOCS_SOURCES` | docs + blog | Folders of the repository to index, as JSON -- see [Sources](#sources) |
 | `BYJG_DOCS_DOCS_ROOT` | *(unset)* | Index this tree instead of cloning -- [development only](local.md#indexing-a-local-checkout) |
 | `BYJG_DOCS_SITE_URL` | `https://opensource.byjg.com` | Base of the public URLs attached to results |
-| `BYJG_DOCS_DOCS_ROUTE` | `docs` | Path segment of the docs on the site |
+| `BYJG_DOCS_DOCS_SUBDIR` | *(unset)* | **Deprecated.** Pins the single indexed folder; ignored when `BYJG_DOCS_SOURCES` is set |
+| `BYJG_DOCS_DOCS_ROUTE` | *(unset)* | **Deprecated.** Route for that folder |
+
+### Sources
+
+A source is one folder of the site repository. The default is the reference
+documentation and the blog:
+
+```json
+[
+  {"name": "docs", "subdir": "docs", "route": "docs"},
+  {"name": "blog", "subdir": "blog", "route": "blog", "category": "blog"}
+]
+```
+
+| Key | Purpose |
+|---|---|
+| `name` | Prefixes every `source_path` from the folder (`docs/php/micro-orm/active-record.md`). It is what keeps two folders from colliding, and what lets a refresh delete only its own documents |
+| `subdir` | Folder in the repository. `""` indexes the repository root |
+| `route` | Path segment the site publishes it under, so a hit cites the right URL: `/docs/...` or `/blog/...` |
+| `category` | Forces the category instead of deriving it from the layout. The docs nest as `category/project/page.md`; the blog is flat, so its posts would otherwise have nothing to filter on |
+
+Both folders land in **one index**, so a single `search_docs` call covers both,
+and `category: blog` narrows to the blog. One clone per refresh serves every
+source.
+
+URLs follow the site, including the two shapes Docusaurus gives a blog post: a
+post that declares a `slug` is cited at `/blog/<slug>`, and one that does not at
+`/blog/<YYYY>/<MM>/<DD>/<name>`, taken from the dated file or folder name. The
+reference documentation keeps citing its path.
+
+Names must be unique and usable as a path segment -- two sources sharing a name
+would share a prefix and prune each other's documents, so that configuration is
+refused at startup, as is an empty list.
+
+Renaming a source, or removing one, leaves its documents behind: a refresh only
+prunes within a prefix it owns. Nothing is rebuilt or deleted automatically --
+the server logs a warning naming them, and you either restore the source or run
+`byjg-docs-index build --force`.
 
 ### Server
 

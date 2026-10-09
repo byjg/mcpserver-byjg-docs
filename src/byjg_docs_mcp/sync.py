@@ -35,10 +35,12 @@ class CloneError(RuntimeError):
 
 
 @contextmanager
-def clone_docs(repo_url: str, branch: str, subdir: str) -> Iterator[Path]:
-    """Shallow-clone `repo_url` and yield the documentation directory.
+def clone_docs(repo_url: str, branch: str, subdir: str = "") -> Iterator[Path]:
+    """Shallow-clone `repo_url` and yield the checkout, or a folder inside it.
 
-    The checkout is removed when the block exits, including on failure.
+    The checkout is removed when the block exits, including on failure. With
+    no `subdir` the repository root is yielded, and each source picks its own
+    folder out of it -- one clone serves them all.
     """
     with tempfile.TemporaryDirectory(prefix="byjg-docs-") as tmp:
         target = Path(tmp) / "repo"
@@ -93,12 +95,44 @@ class ReindexJob:
         settings = self.runtime.settings
         if settings.local_docs:
             logger.info("indexing %s in place", settings.docs_root)
-            return self.runtime.indexer(settings.docs_root).run(force=force)
+            return self._index_sources(Path(settings.docs_root), force=force)
 
-        with clone_docs(
-            settings.repo_url, settings.git_branch, settings.docs_subdir
-        ) as docs_root:
-            return self.runtime.indexer(docs_root).run(force=force)
+        with clone_docs(settings.repo_url, settings.git_branch) as root:
+            return self._index_sources(root, force=force)
+
+    def _index_sources(self, root: Path, force: bool) -> IndexReport:
+        """Index every configured source out of one checkout.
+
+        A source whose folder is absent is skipped with a warning rather than
+        failing the refresh: one missing folder must not cost the others their
+        update. All of them missing is a misconfiguration, and raises.
+        """
+        settings = self.runtime.settings
+        report = IndexReport()
+        indexed_any = False
+        for source in settings.sources:
+            tree = root / source.subdir if source.subdir else root
+            if not tree.is_dir():
+                # A tree pointed straight at the docs folder, the way
+                # BYJG_DOCS_DOCS_ROOT used to mean, still indexes as itself.
+                if settings.local_docs and len(settings.sources) == 1:
+                    tree = root
+                else:
+                    logger.warning(
+                        "source %r: %r is not in %s, skipped",
+                        source.name, source.subdir, root,
+                    )
+                    continue
+            logger.info("indexing source %r from %s", source.name, tree)
+            report = report + self.runtime.indexer(tree, source).run(force=force)
+            indexed_any = True
+
+        if not indexed_any:
+            raise CloneError(
+                "no configured source exists in the repository: "
+                f"{[s.subdir for s in settings.sources]}"
+            )
+        return report
 
     def _run(self) -> None:
         try:

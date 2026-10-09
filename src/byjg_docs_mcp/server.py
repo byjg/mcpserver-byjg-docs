@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = """\
 Searches the ByJG open source documentation (PHP libraries, DevOps tooling,
-Helm charts, JavaScript components and AI tools) published at
-opensource.byjg.com.
+Helm charts, JavaScript components and AI tools) and the blog, both published
+at opensource.byjg.com. Blog posts carry the category "blog".
 
 Use `search_docs` to answer questions about how a ByJG library works, then cite
 the returned URL. Use `get_document` when a search hit looks right but you need
@@ -105,7 +105,8 @@ def build_server(runtime: Runtime) -> MCPServer:
             "relevant passages, each with its public URL. Combines semantic and "
             "keyword matching, so both natural-language questions ('how do I "
             "map a table to a class') and exact symbol names ('TableAttribute') "
-            "work. Optionally narrow to a category (php, devops, js, ai, helm) or a "
+            "work. Covers the reference documentation and the blog. Optionally "
+            "narrow to a category (php, devops, js, ai, helm, blog) or a "
             "project (micro-orm, restserver, docker-easy-haproxy, ...)."
         ),
     )
@@ -133,7 +134,7 @@ def build_server(runtime: Runtime) -> MCPServer:
         description=(
             "Return the full markdown of one documentation page, addressed by "
             "the `source` path reported in a search result (for example "
-            "`php/micro-orm/active-record.md`). Use it when a search hit is "
+            "`docs/php/micro-orm/active-record.md`). Use it when a search hit is "
             "relevant but truncated and you need the whole page."
         ),
     )
@@ -181,7 +182,12 @@ def build_server(runtime: Runtime) -> MCPServer:
         # webhook still builds its index instead of serving an empty one.
         job = runtime.sync_job()
         if settings.webhook_secret:
-            register_webhook(mcp, job, settings.webhook_secret)
+            register_webhook(
+                mcp,
+                job,
+                settings.webhook_secret,
+                tuple(f"{s.subdir}/" if s.subdir else "" for s in settings.sources),
+            )
         register_health(mcp, runtime, job)
 
         # A fresh deployment has an empty volume and an empty index; build it in
@@ -189,8 +195,34 @@ def build_server(runtime: Runtime) -> MCPServer:
         if runtime.store.stats()["documents"] == 0:
             logger.info("index is empty; cloning and building in the background")
             job.trigger()
+        else:
+            _warn_if_orphaned(runtime, settings)
 
     return mcp
+
+
+def _warn_if_orphaned(runtime, settings) -> None:
+    """Report documents no configured source would produce.
+
+    Two ways to get them: an index built before source_path carried a prefix,
+    and a source that has since been removed from the configuration. Either
+    way the per-source cleanup cannot see them -- it only prunes within a
+    prefix it owns -- so they linger, answering searches nobody scoped.
+
+    This only says so. Deleting an index on boot is worse than serving a stale
+    one, and re-embedding is not free.
+    """
+    prefixes = tuple(s.prefix for s in settings.sources)
+    orphans = [p for p in runtime.store.indexed_hashes() if not p.startswith(prefixes)]
+    if not orphans:
+        return
+    logger.warning(
+        "%d indexed document(s) belong to no configured source (e.g. %s). "
+        "They still answer searches but nothing refreshes them: restore the "
+        "source, or rebuild with `byjg-docs-index build --force`.",
+        len(orphans),
+        orphans[0],
+    )
 
 
 def main() -> None:

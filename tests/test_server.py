@@ -80,3 +80,39 @@ def test_stdio_starts_no_background_work(base, store, embedder, no_real_clone):
     base.transport = "stdio"
     build_server(Runtime(settings=base, embedder=embedder, store=store))
     assert not no_real_clone
+
+
+class TestDocumentsWithNoSource:
+    """Upgrading, or dropping a source, never rebuilds by itself: it says so."""
+
+    def test_unprefixed_documents_are_reported(self, base, store, embedder, caplog, doc_factory):
+        store.replace_document(doc_factory("php/micro-orm/active-record.md", [("", "body " * 30)], embedder))
+
+        build_server(Runtime(settings=base, embedder=embedder, store=store))
+
+        assert "build --force" in caplog.text
+        assert "php/micro-orm/active-record.md" in caplog.text
+
+    def test_nothing_is_deleted_by_the_warning(self, base, store, embedder, doc_factory):
+        store.replace_document(doc_factory("php/micro-orm/active-record.md", [("", "body " * 30)], embedder))
+
+        build_server(Runtime(settings=base, embedder=embedder, store=store))
+
+        assert store.stats()["documents"] == 1, "an index is served, never wiped, on boot"
+
+    def test_a_prefixed_index_says_nothing(self, base, store, embedder, caplog, doc_factory):
+        store.replace_document(doc_factory("docs/php/micro-orm/active-record.md", [("", "body " * 30)], embedder))
+
+        build_server(Runtime(settings=base, embedder=embedder, store=store))
+
+        assert "build --force" not in caplog.text
+
+    def test_a_removed_source_leaves_documents_it_names(self, base, store, embedder, caplog, doc_factory):
+        """Drop the blog from the configuration and its rows are orphaned."""
+        store.replace_document(doc_factory("blog/2025-09-09-post.md", [("", "body " * 30)], embedder))
+        base.sources = [s for s in base.sources if s.name != "blog"]
+
+        build_server(Runtime(settings=base, embedder=embedder, store=store))
+
+        assert "no configured source" in caplog.text
+        assert "blog/2025-09-09-post.md" in caplog.text

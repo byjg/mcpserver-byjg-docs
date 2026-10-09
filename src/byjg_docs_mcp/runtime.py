@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import Settings, load_settings
+from .config import Settings, Source, load_settings
 from .embeddings import Embedder, create_embedder
 from .indexer import DocsIndexer
 from .stores import VectorStore, create_store
@@ -23,19 +23,19 @@ class Runtime:
 
         return ReindexJob(self)
 
-    def indexer(self, docs_root: Path) -> DocsIndexer:
-        """An indexer bound to a specific tree.
+    def indexer(self, docs_root: Path, source: Source | None = None) -> DocsIndexer:
+        """An indexer bound to one tree and the source it represents.
 
         The tree is passed in rather than read from settings because it is
         usually a temporary clone that only exists for the duration of a
-        refresh.
+        refresh; the source says how to name, scope and link what is in it.
         """
         return DocsIndexer(
             docs_root=docs_root,
             store=self.store,
             embedder=self.embedder,
             site_url=self.settings.site_url,
-            docs_route=self.settings.docs_route,
+            source=source or self.settings.sources[0],
         )
 
     def close(self) -> None:

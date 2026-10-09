@@ -323,9 +323,11 @@ What the endpoint does, in order:
 
 1. **Verifies `X-Hub-Signature-256`.** Absent or malformed is a rejection, never
    a pass. Without this, anyone could trigger reindexing.
-2. **Filters by path.** The site repo also holds the Docusaurus app, CI config
-   and blog. A push touching no `docs/` path is ignored -- rebuilding for a
-   `package-lock.json` bump is waste.
+2. **Filters by path.** The site repo also holds the Docusaurus app, its CI
+   config and the packages. A push is ignored unless it touched a folder this
+   server indexes -- one prefix per [source](configuration.md#sources), so
+   `docs/` and `blog/` both count. Rebuilding for a `package-lock.json` bump is
+   waste.
 3. **Returns 202 immediately** and refreshes in a background thread: the clone
    plus reindex takes longer than GitHub's delivery timeout.
 4. **Drops overlapping triggers.** A burst of pushes must not start concurrent
@@ -357,9 +359,9 @@ Every delivery in **Recent Deliveries** shows the server's response:
 | Response | Meaning |
 |---|---|
 | `200` `{"status": "pong"}` | The `ping` on save. Only sent after the signature checks out, so the secret matches and the endpoint is reachable |
-| `202` `{"status": "reindexing"}` | A push touched `docs/`; a refresh started in the background |
+| `202` `{"status": "reindexing"}` | A push touched an indexed folder; a refresh started in the background |
 | `202` `{"status": "already running"}` | A refresh was already in flight; this push did not start another |
-| `200` `{"status": "ignored", "reason": "no docs changed"}` | The push touched no `docs/` path -- ignored on purpose |
+| `200` `{"status": "ignored", "reason": "no docs changed"}` | The push touched no indexed folder -- ignored on purpose |
 | `200` `{"status": "ignored", "event": "..."}` | An event other than `push` or `ping` |
 | `401` `{"error": "invalid signature"}` | The webhook's secret does not match `BYJG_DOCS_WEBHOOK_SECRET` |
 | `404` | Endpoint not registered: `BYJG_DOCS_WEBHOOK_SECRET` is empty on the server |

@@ -48,7 +48,9 @@ def register_health(mcp, runtime: Runtime, job: "ReindexJob | None" = None) -> N
         )
 
 
-def register_webhook(mcp, job: ReindexJob, secret: str, docs_prefix: str = "docs/") -> None:
+def register_webhook(
+    mcp, job: ReindexJob, secret: str, docs_prefixes: tuple[str, ...] = ("docs/",)
+) -> None:
     """Attach `POST /webhook/github` to the server's HTTP app."""
 
     @mcp.custom_route("/webhook/github", methods=["POST"])
@@ -64,7 +66,7 @@ def register_webhook(mcp, job: ReindexJob, secret: str, docs_prefix: str = "docs
             return JSONResponse({"status": "ignored", "event": event})
 
         payload = await request.json()
-        if not _touches_docs(payload, docs_prefix):
+        if not _touches_docs(payload, docs_prefixes):
             return JSONResponse({"status": "ignored", "reason": "no docs changed"})
 
         started = job.trigger()
@@ -74,14 +76,20 @@ def register_webhook(mcp, job: ReindexJob, secret: str, docs_prefix: str = "docs
         )
 
 
-def _touches_docs(payload: dict, prefix: str) -> bool:
-    """Skip pushes that changed no documentation.
+def _touches_docs(payload: dict, prefixes: tuple[str, ...]) -> bool:
+    """Skip pushes that changed nothing this server indexes.
 
-    The site repo also holds the Docusaurus app, CI config and blog; rebuilding
-    the index for a package-lock bump is pure waste.
+    The site repo also holds the Docusaurus app, its CI config and the
+    packages; rebuilding the index for a package-lock bump is pure waste. One
+    prefix per indexed source, so a blog-only push still refreshes -- and an
+    empty prefix means a source indexes the whole repository, where every push
+    counts.
     """
+    if any(not prefix.strip("/") for prefix in prefixes):
+        return True
     for commit in payload.get("commits", []):
         for key in ("added", "modified", "removed"):
-            if any(path.startswith(prefix) for path in commit.get(key, [])):
-                return True
+            for path in commit.get(key, []):
+                if any(path.startswith(prefix) for prefix in prefixes):
+                    return True
     return False
