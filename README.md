@@ -46,6 +46,7 @@ see [Authentication](docs/development/self-hosting.md#authentication).
 | Claude Desktop | [instructions](docs/clients.md#claude-desktop) |  |
 | Codex CLI | [instructions](docs/clients.md#codex-cli) |  |
 | Gemini CLI | [instructions](docs/clients.md#gemini-cli) |  |
+| OpenCode | [instructions](docs/clients.md#opencode) |  |
 | Cursor | [instructions](docs/clients.md#cursor) | [![Install in Cursor](https://img.shields.io/badge/Install_in-Cursor-000000?style=flat-square&logoColor=white)](https://cursor.com/en/install-mcp?name=byjg-docs&config=eyJ0eXBlIjoiaHR0cCIsInVybCI6Imh0dHBzOi8vbWNwZG9jcy5ieWpnLmNvbS9tY3AifQ==) |
 | VS Code | [instructions](docs/clients.md#vs-code) | [![Install in VS Code](https://img.shields.io/badge/Install_in-VS_Code-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=byjg-docs&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp%22%7D) |
 | VS Code Insiders | [instructions](docs/clients.md#vs-code) | [![Install in VS Code Insiders](https://img.shields.io/badge/Install_in-VS_Code_Insiders-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=byjg-docs&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcpdocs.byjg.com%2Fmcp%22%7D&quality=insiders) |

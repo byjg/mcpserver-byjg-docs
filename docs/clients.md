@@ -29,6 +29,7 @@ official MCP Registry as `com.byjg/docs`, but no editor installs it from there
 - [Gemini CLI](#gemini-cli)
 - [Qwen Code](#qwen-code)
 - [Kilo CLI](#kilo-cli)
+- [OpenCode](#opencode)
 - [Cursor](#cursor)
 - [VS Code](#vs-code)
 - [JetBrains IDEs](#jetbrains-ides)
@@ -347,6 +348,78 @@ already has `"*": "ask"`, put the rule **after** it -- the last matching rule
 wins.
 
 Verify: `kilo mcp list`.
+
+## OpenCode
+
+Kilo CLI is a fork of OpenCode, and OpenCode reads the same `mcp` key with
+`"type": "remote"`. Add it to the project, or with `--global` to
+`~/.config/opencode/opencode.json`:
+
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
+```bash
+opencode mcp add byjg-docs --global --url https://mcpdocs.byjg.com/mcp
+```
+
+Or edit `opencode.json` (or `opencode.jsonc`) directly:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "byjg-docs": {
+      "type": "remote",
+      "url": "https://mcpdocs.byjg.com/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```bash
+opencode mcp add byjg-docs --global --url https://your-server.example.com/mcp \
+  --header "Authorization=Bearer <TOKEN>"
+```
+
+Or edit `opencode.json` (or `opencode.jsonc`) directly:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "byjg-docs": {
+      "type": "remote",
+      "url": "https://your-server.example.com/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:BYJG_DOCS_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+`{env:BYJG_DOCS_TOKEN}` keeps the token out of the file: export it before
+starting OpenCode. A literal `"Bearer <TOKEN>"` works too.
+
+</TabItem>
+</Tabs>
+
+OpenCode 2.x writes this as `mcp.servers.byjg-docs` and reads both shapes.
+MCP tools run without asking by default, so no `permission` rule is needed.
+
+Verify with a prompt that calls the tool:
+
+```bash
+opencode run "Search the byjg-docs MCP server for MicroOrm and reply with the first URL"
+```
+
+`opencode mcp list` asks the background service, which may not have loaded
+the new config yet.
 
 ## Cursor
 
