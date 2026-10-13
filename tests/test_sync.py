@@ -1,11 +1,14 @@
 """Fetching from GitHub into a throwaway checkout."""
 
 import subprocess
+import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from byjg_docs_mcp.config import Settings
+from byjg_docs_mcp.indexer import IndexReport
 from byjg_docs_mcp.runtime import Runtime
 from byjg_docs_mcp.sync import CloneError, ReindexJob, clone_docs
 
@@ -131,11 +134,69 @@ class TestRefresh:
 
 
 class TestConcurrency:
-    def test_a_second_trigger_is_dropped(self, store, embedder):
-        rt = Runtime(settings=Settings(), embedder=embedder, store=store)
-        job = ReindexJob(rt)
-        job._running = True
+    @pytest.fixture
+    def job(self, store, embedder):
+        """A job whose refresh blocks until released, so a run can be held open."""
+        job = ReindexJob(Runtime(settings=Settings(), embedder=embedder, store=store))
+        job.started = threading.Semaphore(0)
+        job.release = threading.Event()
+        job.runs = 0
+        job.fail_first = False
+
+        def refresh(force=False):
+            job.runs += 1
+            job.started.release()
+            assert job.release.wait(5)
+            if job.fail_first and job.runs == 1:
+                raise RuntimeError("clone failed")
+            return IndexReport()
+
+        job.refresh = refresh
+        return job
+
+    @staticmethod
+    def wait_until_idle(job):
+        deadline = time.monotonic() + 5
+        while job.running and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert not job.running
+
+    def test_a_single_trigger_runs_once(self, job):
+        assert job.trigger() is True
+        assert job.started.acquire(timeout=5)
+        job.release.set()
+        self.wait_until_idle(job)
+        assert job.runs == 1
+
+    def test_triggers_during_a_run_queue_exactly_one_more(self, job):
+        """Regression: a push landing after the clone, mid-embedding, was lost."""
+        assert job.trigger() is True
+        assert job.started.acquire(timeout=5)
         assert job.trigger() is False
+        assert job.trigger() is False
+        assert job.runs == 1, "nothing overlaps the run in flight"
+
+        job.release.set()
+        self.wait_until_idle(job)
+        assert job.runs == 2
+
+    def test_a_queued_run_survives_a_failed_one(self, job):
+        job.fail_first = True
+        assert job.trigger() is True
+        assert job.started.acquire(timeout=5)
+        assert job.trigger() is False
+
+        job.release.set()
+        self.wait_until_idle(job)
+        assert job.runs == 2
+
+    def test_job_can_be_triggered_again_once_idle(self, job):
+        job.release.set()
+        assert job.trigger() is True
+        self.wait_until_idle(job)
+        assert job.trigger() is True
+        self.wait_until_idle(job)
+        assert job.runs == 2
 
 
 class TestDocsRootBlank:

@@ -267,11 +267,14 @@ class SqliteVecStore(VectorStore):
         category: str | None = None,
         project: str | None = None,
     ) -> list[SearchHit]:
-        # Over-fetch from each ranker: filters are applied after retrieval, and
-        # RRF needs a deeper pool than the final cut to fuse meaningfully.
+        # Over-fetch from each ranker: RRF needs a deeper pool than the final
+        # cut to fuse meaningfully. The scope narrows each ranker itself, not
+        # the fused pool: filtering afterwards would return nothing whenever a
+        # larger project fills the pool first.
         pool = max(limit * 6, 60)
-        vector_ids = self._vector_ranking(query_vector, pool)
-        text_ids = self._text_ranking(query_text, pool)
+        scope, scope_params = self._scope(category, project)
+        vector_ids = self._vector_ranking(query_vector, pool, scope, scope_params)
+        text_ids = self._text_ranking(query_text, pool, scope, scope_params)
 
         scores: dict[int, float] = {}
         vpos: dict[int, int] = {}
@@ -286,7 +289,7 @@ class SqliteVecStore(VectorStore):
         if not scores:
             return []
 
-        rows = self._load_chunks(list(scores), category=category, project=project)
+        rows = self._load_chunks(list(scores))
         hits = [
             SearchHit(
                 chunk=chunk,
@@ -299,44 +302,60 @@ class SqliteVecStore(VectorStore):
         hits.sort(key=lambda h: h.score, reverse=True)
         return hits[:limit]
 
-    def _vector_ranking(self, query_vector: list[float], pool: int) -> list[int]:
+    @staticmethod
+    def _scope(category: str | None, project: str | None) -> tuple[str, list[object]]:
+        """SQL restricting a ranker to the chunks of a category and/or project.
+
+        Empty when there is nothing to filter on. Both virtual tables accept a
+        `rowid in (...)` constraint next to their MATCH, so the same clause
+        serves the vector and the keyword side.
+        """
+        conditions: list[str] = []
+        params: list[object] = []
+        if category:
+            conditions.append("category = ?")
+            params.append(category)
+        if project:
+            conditions.append("project = ?")
+            params.append(project)
+        if not conditions:
+            return "", []
+        where = " and ".join(conditions)
+        return f" and rowid in (select id from chunks where {where})", params
+
+    def _vector_ranking(
+        self, query_vector: list[float], pool: int, scope: str, scope_params: list[object]
+    ) -> list[int]:
         if len(query_vector) != self.dimensions:
             raise ValueError(
                 f"query vector has {len(query_vector)} dims, index has {self.dimensions}"
             )
         rows = self.db.execute(
-            """select rowid from chunks_vec
-               where embedding match ? and k = ?
-               order by distance""",
-            (_pack(query_vector), pool),
+            f"""select rowid from chunks_vec
+                where embedding match ? and k = ?{scope}
+                order by distance""",
+            (_pack(query_vector), pool, *scope_params),
         ).fetchall()
         return [r["rowid"] for r in rows]
 
-    def _text_ranking(self, query_text: str, pool: int) -> list[int]:
+    def _text_ranking(
+        self, query_text: str, pool: int, scope: str, scope_params: list[object]
+    ) -> list[int]:
         match = _fts_query(query_text)
         if not match:
             return []
         rows = self.db.execute(
-            """select rowid from chunks_fts
-               where chunks_fts match ?
-               order by bm25(chunks_fts, 1.0, 2.0, 2.0)
-               limit ?""",
-            (match, pool),
+            f"""select rowid from chunks_fts
+                where chunks_fts match ?{scope}
+                order by bm25(chunks_fts, 1.0, 2.0, 2.0)
+                limit ?""",
+            (match, *scope_params, pool),
         ).fetchall()
         return [r["rowid"] for r in rows]
 
-    def _load_chunks(
-        self, rowids: list[int], category: str | None, project: str | None
-    ) -> dict[int, Chunk]:
+    def _load_chunks(self, rowids: list[int]) -> dict[int, Chunk]:
         placeholders = ",".join("?" * len(rowids))
         sql = f"select * from chunks where id in ({placeholders})"
-        params: list[object] = list(rowids)
-        if category:
-            sql += " and category = ?"
-            params.append(category)
-        if project:
-            sql += " and project = ?"
-            params.append(project)
         return {
             r["id"]: Chunk(
                 source_path=r["source_path"],
@@ -348,7 +367,7 @@ class SqliteVecStore(VectorStore):
                 category=r["category"],
                 project=r["project"],
             )
-            for r in self.db.execute(sql, params)
+            for r in self.db.execute(sql, rowids)
         }
 
     @_synchronized

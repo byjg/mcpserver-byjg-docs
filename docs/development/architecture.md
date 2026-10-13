@@ -77,12 +77,15 @@ come out as coherent sections instead of arbitrary slices.
 Three things it has to get right:
 
 - **Fenced code is tracked.** A `#` at the start of a shell comment is not a
-  heading. Without this, a document with a bash snippet gets shredded.
+  heading, and a blank line in a code sample is not a paragraph break. Without
+  this, a document with a bash snippet gets shredded.
 - **Runt sections merge forward.** A heading with one line under it is not
   independently retrievable, so it joins its neighbour.
 - **Oversized sections split.** A generated diagram or a wide table has no
   paragraph breaks to split on, so there is a hard ceiling enforced on line
-  boundaries, then on characters.
+  boundaries, then on characters. A cut that lands inside a fenced block
+  closes the fence and reopens it in the next chunk, so both halves still read
+  as code.
 
 Each chunk keeps its heading path (`Active Record > Pattern Overview`), which
 is what makes a result citable.
@@ -215,7 +218,8 @@ Wins: no state to initialise, migrate or back up; no way for the local tree to
 drift from GitHub. Cost: ~22s of clone on every refresh, and a refresh needs
 network even when nothing changed.
 
-**Dropping concurrent webhook triggers instead of queueing them.** A burst of
-pushes must not start overlapping clones. The clone in flight picks up the
-newer commits anyway. Cost: a push landing microseconds after a reindex starts
-waits for the next trigger.
+**Collapsing concurrent webhook triggers into one follow-up run.** A burst of
+pushes must not start overlapping clones, but the clone in flight only has the
+commits that existed when it ran. So a trigger arriving mid-refresh is
+remembered, and exactly one more refresh follows. Cost: that follow-up is
+often a ~25s clone that finds nothing new.

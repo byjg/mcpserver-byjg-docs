@@ -26,7 +26,11 @@ spec:
     spec:
       containers:
         - name: ollama
-          image: ollama/ollama:latest
+          # Pinned on purpose: the same model embeds differently under a
+          # different Ollama release, and the index keeps the vectors of the
+          # one that built it. After changing this version, rebuild with
+          # `byjg-docs-index build --force` in the mcp pod.
+          image: ollama/ollama:0.40.0
           ports:
             - name: http
               containerPort: 11434

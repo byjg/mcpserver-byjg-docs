@@ -69,7 +69,7 @@ def register_webhook(mcp, job: ReindexJob, secret: str, docs_prefix: str = "docs
 
         started = job.trigger()
         return JSONResponse(
-            {"status": "reindexing" if started else "already running"},
+            {"status": "reindexing" if started else "queued"},
             status_code=202,
         )
 

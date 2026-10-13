@@ -62,23 +62,32 @@ class ReindexJob:
     """Serialises refreshes.
 
     A burst of webhook deliveries must not start overlapping clones, so a
-    trigger arriving while one is running is dropped rather than queued -- the
-    clone already in flight will pick up the newer commits anyway.
+    trigger arriving while one is running does not start another. It is
+    remembered instead, and one more refresh follows the current one: the
+    clone in flight only has the commits that existed when it ran, and a push
+    landing while the index is being embedded would otherwise be lost. However
+    many triggers arrive in the meantime, they collapse into that single run.
     """
 
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self._lock = threading.Lock()
         self._running = False
+        self._pending = False
 
     @property
     def running(self) -> bool:
         return self._running
 
     def trigger(self) -> bool:
-        """Start a refresh in the background. False if one is already running."""
+        """Start a refresh in the background.
+
+        False if one is already running, in which case another is queued to
+        follow it.
+        """
         with self._lock:
             if self._running:
+                self._pending = True
                 return False
             self._running = True
         threading.Thread(target=self._run, daemon=True).start()
@@ -101,10 +110,15 @@ class ReindexJob:
             return self.runtime.indexer(docs_root).run(force=force)
 
     def _run(self) -> None:
-        try:
-            report = self.refresh()
-            logger.info("reindex complete: %s", report.summary())
-        except Exception:
-            logger.exception("reindex failed")
-        finally:
-            self._running = False
+        while True:
+            try:
+                report = self.refresh()
+                logger.info("reindex complete: %s", report.summary())
+            except Exception:
+                logger.exception("reindex failed")
+            with self._lock:
+                if not self._pending:
+                    self._running = False
+                    return
+                self._pending = False
+            logger.info("a push arrived during the reindex; running once more")

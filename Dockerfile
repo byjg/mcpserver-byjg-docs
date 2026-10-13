@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12.15-slim
 
 # git is a runtime dependency: each refresh clones the docs repo into a
 # temporary directory.

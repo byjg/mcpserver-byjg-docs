@@ -1,7 +1,8 @@
 """Walk the docs tree, chunk it, embed it and persist it.
 
 Reindexing is incremental: a document is re-embedded only when its content
-hash changes, and documents deleted from disk are dropped from the index.
+hash changes, and documents that are gone from disk -- or have shrunk into a
+placeholder -- are dropped from the index.
 """
 
 from __future__ import annotations
@@ -151,18 +152,21 @@ class DocsIndexer:
     ) -> IndexReport:
         report = IndexReport()
         self.store.setup()
-        known = {} if force else self.store.indexed_hashes()
-        seen: set[str] = set()
+        indexed = self.store.indexed_hashes()
+        known = {} if force else indexed
+        # Only documents that still produce content count as present: a file
+        # cut down to a stub must leave the index just like a deleted one.
+        present: set[str] = set()
 
         for path in self.iter_files():
             report.scanned += 1
             relative = self._relative(path)
-            seen.add(relative)
 
             doc = self.build_document(path)
             if doc is None:
                 report.skipped_empty += 1
                 continue
+            present.add(relative)
             if known.get(relative) == doc.content_hash:
                 report.skipped_unchanged += 1
                 continue
@@ -176,10 +180,10 @@ class DocsIndexer:
             if progress:
                 progress(f"indexed {relative} ({len(doc.chunks)} chunks)")
 
-        stale = [p for p in known if p not in seen]
+        stale = [p for p in indexed if p not in present]
         if stale:
             report.deleted = self.store.delete_documents(stale)
             if progress:
-                progress(f"removed {report.deleted} document(s) no longer on disk")
+                progress(f"removed {report.deleted} document(s) no longer in the docs")
 
         return report

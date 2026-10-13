@@ -57,7 +57,7 @@ Reading the summary:
 | `indexed` | Embedded and written this run |
 | `unchanged` | Skipped -- content hash matched what was stored |
 | `empty` | Skipped -- body under 50 chars (a "TBD" stub) |
-| `deleted` | Removed -- no longer on disk |
+| `deleted` | Removed -- no longer on disk, or reduced to a stub |
 | `chunks` | Passages written this run |
 
 Runs are **incremental by default**, and stay incremental despite the fresh

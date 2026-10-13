@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # The Dockerfile and the images named in the k8s manifests.
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/k8s"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # A different Ollama release embeds differently, so a bump needs a forced
+      # rebuild of the index and has to change compose and k8s together. It is
+      # done by hand; see docs/development/troubleshooting.md.
+      - dependency-name: "ollama/ollama"
+      # Stay on the Python line the image is built for; take its patches only.
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "ollama/ollama"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
