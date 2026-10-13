@@ -33,7 +33,7 @@ spec:
         # there. It fails while the Service has no ready endpoint, and the
         # kubelet retries it -- that retry *is* the wait for ollama.
         - name: pull-embedding-model
-          image: ollama/ollama:latest
+          image: ollama/ollama:0.40.0
           command: ["ollama", "pull", "nomic-embed-text"]
           env:
             - name: OLLAMA_HOST

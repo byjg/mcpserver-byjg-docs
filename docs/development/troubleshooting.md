@@ -24,6 +24,13 @@ point `BYJG_DOCS_DOCS_ROOT` at your checkout to
 [index it in place](local.md#indexing-a-local-checkout). If you changed the
 *model* or the chunker instead, run `build --force`.
 
+**Search got worse after upgrading Ollama**
+The same model produces different vectors under a different Ollama release.
+The index still holds the old ones, and an incremental `build` does not
+re-embed files whose content did not change, so queries and documents end up
+in different spaces. That is why the Ollama image is pinned; after changing
+its version, run `build --force`.
+
 **`query vector has N dims, index has M`**
 The embedding model changed under an existing index. Rebuild with `--force`,
 or delete the `.db` and build again.

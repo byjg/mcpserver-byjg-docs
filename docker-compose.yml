@@ -1,6 +1,10 @@
 services:
   ollama:
-    image: ollama/ollama:latest
+    # Pinned on purpose: the same model embeds differently under a different
+    # Ollama release, and the index keeps the vectors of the one that built
+    # it. After changing this version, rebuild with `byjg-docs-index build
+    # --force`. Keep it equal to `ollama-init` and to the k8s manifests.
+    image: ollama/ollama:0.40.0
     volumes:
       - ollama:/root/.ollama
     restart: unless-stopped
@@ -25,7 +29,7 @@ services:
 
   # Pulls the embedding model once into the shared volume, then exits.
   ollama-init:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.0
     depends_on:
       ollama:
         condition: service_healthy
@@ -94,7 +98,7 @@ services:
   # LAN only. Nothing else depends on it.
   cloudflared:
     profiles: ["tunnel"]
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.10.0
     depends_on:
       - mcp
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
