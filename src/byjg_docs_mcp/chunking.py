@@ -11,6 +11,11 @@ import re
 from dataclasses import dataclass
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*$")
+# Any indentation is accepted on purpose. Markdown caps a top-level fence at
+# three spaces, but the docs nest fences deeper inside list items and MDX
+# components (`<TabItem>`), where they are just as real. Telling those apart
+# takes a full Markdown parser; treating a four-space-indented sample as a
+# fence costs nothing next to missing a nested one.
 FENCE_RE = re.compile(r"^(\s*)(```+|~~~+)(.*)$")
 FRONTMATTER_DELIM = "---"
 
@@ -64,6 +69,11 @@ def _fence_openers(lines: list[str]) -> list[int | None]:
     the start of a shell snippet is a comment, not a heading, and a blank line
     in a code sample is not a paragraph break; without this the document would
     be shredded at both.
+
+    A block is closed only by a fence of the same character, at least as long
+    as the one that opened it and with nothing after it. That is what lets a
+    four-backtick block show a three-backtick one, or a sample quote a line
+    like "```php", without ending early.
     """
     openers: list[int | None] = [None] * len(lines)
     fence: str | None = None
@@ -73,8 +83,12 @@ def _fence_openers(lines: list[str]) -> list[int | None]:
         if match:
             marker = match.group(2)
             if fence is None:
-                fence, opener = marker[:3], i
-            elif marker.startswith(fence):
+                fence, opener = marker, i
+            elif (
+                marker[0] == fence[0]
+                and len(marker) >= len(fence)
+                and not match.group(3).strip()
+            ):
                 openers[i] = opener
                 fence = opener = None
                 continue
