@@ -45,6 +45,7 @@ see [Authentication](docs/development/self-hosting.md#authentication).
 | Claude Code (CLI) | [instructions](docs/clients.md#claude-code) |  |
 | Claude Desktop | [instructions](docs/clients.md#claude-desktop) |  |
 | Codex CLI | [instructions](docs/clients.md#codex-cli) |  |
+| GitHub Copilot CLI | [instructions](docs/clients.md#github-copilot-cli) |  |
 | Gemini CLI | [instructions](docs/clients.md#gemini-cli) |  |
 | OpenCode | [instructions](docs/clients.md#opencode) |  |
 | Cursor | [instructions](docs/clients.md#cursor) | [![Install in Cursor](https://img.shields.io/badge/Install_in-Cursor-000000?style=flat-square&logoColor=white)](https://cursor.com/en/install-mcp?name=byjg-docs&config=eyJ0eXBlIjoiaHR0cCIsInVybCI6Imh0dHBzOi8vbWNwZG9jcy5ieWpnLmNvbS9tY3AifQ==) |
