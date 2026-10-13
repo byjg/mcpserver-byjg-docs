@@ -78,3 +78,42 @@ def test_merging_never_exceeds_the_hard_limit():
 def test_empty_body_produces_no_chunks():
     assert chunk_markdown("") == []
     assert chunk_markdown("\n\n   \n") == []
+
+
+def _fences(text):
+    return [line for line in text.split("\n") if line.startswith(("```", "~~~"))]
+
+
+def test_blank_line_inside_fenced_code_is_not_a_paragraph_break():
+    """Regression: a long section was cut at a blank line in the middle of a sample."""
+    prose = "Sentence about the mapper. " * 30  # ~810 chars
+    statements = [f"$step{i} = $repository->get({i});" for i in range(30)]
+    code = "```php\n" + "\n\n".join(statements) + "\n```"
+    body = f"# Doc\n\n{prose}\n\n{prose}\n\n{code}\n\n{prose}"
+
+    chunks = [text for _, text in chunk_markdown(body)]
+    assert len(chunks) > 1
+    assert all(len(_fences(text)) % 2 == 0 for text in chunks)
+    assert sum(code in text for text in chunks) == 1, "the sample stays in one chunk"
+
+
+def test_oversized_fenced_block_is_closed_and_reopened_at_each_cut():
+    statements = [f"$row{i} = $repository->get({i});" for i in range(400)]
+    assert len("\n".join(statements)) > HARD_MAX_CHARS * 2
+    body = "# Big\n\nIntro.\n\n```php\n" + "\n".join(statements) + "\n```\n"
+
+    chunks = [text for _, text in chunk_markdown(body)]
+    assert len(chunks) > 2
+    assert all(len(text) <= HARD_MAX_CHARS for text in chunks)
+    assert all(_fences(text) == ["```php", "```"] for text in chunks)
+    # Nothing is lost or duplicated by the added fences.
+    kept = [line for text in chunks for line in text.split("\n") if line.startswith("$row")]
+    assert kept == statements
+
+
+def test_oversized_line_inside_fenced_code_is_still_cut():
+    body = "# Big\n\n```json\n" + ("x" * (HARD_MAX_CHARS * 3)) + "\n```\n"
+    chunks = [text for _, text in chunk_markdown(body)]
+    assert all(len(text) <= HARD_MAX_CHARS for text in chunks)
+    assert all(len(_fences(text)) % 2 == 0 for text in chunks)
+    assert sum(text.count("x") for text in chunks) == HARD_MAX_CHARS * 3

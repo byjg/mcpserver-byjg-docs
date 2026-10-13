@@ -57,40 +57,41 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return {}, text
 
 
-def _strip_fenced(lines: list[str]) -> list[bool]:
-    """Mark which lines sit inside a fenced code block.
+def _fence_openers(lines: list[str]) -> list[int | None]:
+    """For each line, the index of the line that opened its fenced code block.
 
-    A `#` at the start of a shell snippet is a comment, not a heading; without
-    this the document would be shredded at every commented line.
+    None outside a block; the delimiters themselves count as inside. A `#` at
+    the start of a shell snippet is a comment, not a heading, and a blank line
+    in a code sample is not a paragraph break; without this the document would
+    be shredded at both.
     """
-    inside = [False] * len(lines)
+    openers: list[int | None] = [None] * len(lines)
     fence: str | None = None
+    opener: int | None = None
     for i, line in enumerate(lines):
         match = FENCE_RE.match(line)
         if match:
             marker = match.group(2)
             if fence is None:
-                fence = marker[:3]
-                inside[i] = True
+                fence, opener = marker[:3], i
+            elif marker.startswith(fence):
+                openers[i] = opener
+                fence = opener = None
                 continue
-            if marker.startswith(fence):
-                inside[i] = True
-                fence = None
-                continue
-        inside[i] = fence is not None
-    return inside
+        openers[i] = opener
+    return openers
 
 
 def split_sections(body: str) -> list[Section]:
     """Group lines under their heading trail."""
     lines = body.split("\n")
-    fenced = _strip_fenced(lines)
+    openers = _fence_openers(lines)
     sections: list[Section] = []
     trail: list[str] = []
     current = Section(heading_path=[], lines=[])
 
-    for line, in_code in zip(lines, fenced):
-        match = None if in_code else HEADING_RE.match(line)
+    for line, opener in zip(lines, openers):
+        match = None if opener is not None else HEADING_RE.match(line)
         if match:
             if current.text:
                 sections.append(current)
@@ -109,9 +110,26 @@ def split_sections(body: str) -> list[Section]:
     return sections
 
 
+def _paragraphs(text: str) -> list[str]:
+    """Split on blank lines, keeping a fenced code block in one piece."""
+    lines = text.split("\n")
+    paragraphs: list[str] = []
+    current: list[str] = []
+    for line, opener in zip(lines, _fence_openers(lines)):
+        if opener is None and not line.strip():
+            if current:
+                paragraphs.append("\n".join(current))
+                current = []
+        else:
+            current.append(line)
+    if current:
+        paragraphs.append("\n".join(current))
+    return paragraphs
+
+
 def _split_long(text: str, limit: int = MAX_CHARS) -> list[str]:
     """Break an oversized section on blank lines, never mid-paragraph."""
-    paragraphs = [p for p in re.split(r"\n\s*\n", text) if p.strip()]
+    paragraphs = _paragraphs(text)
     parts: list[str] = []
     buffer = ""
     for paragraph in paragraphs:
@@ -132,26 +150,43 @@ def _enforce_hard_limit(parts: list[str]) -> list[str]:
     Applies to the cases paragraph splitting cannot help with: a huge table, a
     long fenced block, a generated diagram. Falls back to line boundaries, then
     to a blunt character cut, so the function always terminates.
+
+    A cut inside a fenced block closes the fence and reopens it in the next
+    chunk, so each half still reads as code in its original language.
     """
     result: list[str] = []
     for part in parts:
         if len(part) <= HARD_MAX_CHARS:
             result.append(part)
             continue
+        lines = part.split("\n")
+        openers = _fence_openers(lines)
+        # Room kept free for the fence line a cut adds to each side of it.
+        reserve = max((len(lines[o]) + 1 for o in openers if o is not None), default=0)
+        if reserve * 2 >= HARD_MAX_CHARS:
+            openers, reserve = [None] * len(lines), 0
+        limit = HARD_MAX_CHARS - reserve
+        width = limit - reserve
+        pieces = [
+            (line[start : start + width], opener)
+            for line, opener in zip(lines, openers)
+            for start in range(0, max(len(line), 1), width)
+        ]
+
         buffer = ""
-        for line in part.split("\n"):
-            while len(line) > HARD_MAX_CHARS:
-                if buffer:
-                    result.append(buffer)
-                    buffer = ""
-                result.append(line[:HARD_MAX_CHARS])
-                line = line[HARD_MAX_CHARS:]
-            candidate = f"{buffer}\n{line}" if buffer else line
-            if len(candidate) > HARD_MAX_CHARS:
-                result.append(buffer)
-                buffer = line
-            else:
+        previous: int | None = None
+        for text, opener in pieces:
+            candidate = f"{buffer}\n{text}" if buffer else text
+            if len(candidate) <= limit:
                 buffer = candidate
+            elif opener is not None and opener == previous:
+                fence = FENCE_RE.match(lines[opener])
+                result.append(f"{buffer}\n{fence.group(1)}{fence.group(2)}")
+                buffer = f"{lines[opener]}\n{text}"
+            else:
+                result.append(buffer)
+                buffer = text
+            previous = opener
         if buffer.strip():
             result.append(buffer)
     return result
