@@ -112,3 +112,26 @@ def test_deleted_files_are_dropped_from_the_index(indexer, docs_root, store):
     report = indexer.run()
     assert report.deleted == 1
     assert store.get_document("php/micro-orm/active-record.md") is None
+
+
+def test_document_reduced_to_a_placeholder_is_dropped_from_the_index(indexer, docs_root, store):
+    """Regression: a stub is still a file on disk, so it used to keep its old content."""
+    indexer.run()
+    (docs_root / "php/micro-orm/active-record.md").write_text("# Active Record\n\nTBD")
+
+    report = indexer.run()
+    assert report.skipped_empty == 2
+    assert report.deleted == 1
+    assert store.get_document("php/micro-orm/active-record.md") is None
+    assert store.stats()["documents"] == 2
+
+
+def test_force_still_drops_deleted_files(indexer, docs_root, store):
+    """Regression: forcing ignored the stored hashes, and with them what to remove."""
+    indexer.run()
+    (docs_root / "php/micro-orm/active-record.md").unlink()
+
+    report = indexer.run(force=True)
+    assert report.indexed == 2
+    assert report.deleted == 1
+    assert store.get_document("php/micro-orm/active-record.md") is None
