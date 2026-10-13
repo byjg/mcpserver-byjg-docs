@@ -358,7 +358,7 @@ Every delivery in **Recent Deliveries** shows the server's response:
 |---|---|
 | `200` `{"status": "pong"}` | The `ping` on save. Only sent after the signature checks out, so the secret matches and the endpoint is reachable |
 | `202` `{"status": "reindexing"}` | A push touched `docs/`; a refresh started in the background |
-| `202` `{"status": "already running"}` | A refresh was already in flight; this push did not start another |
+| `202` `{"status": "queued"}` | A refresh was already in flight; one more runs as soon as it finishes, so this push is not lost |
 | `200` `{"status": "ignored", "reason": "no docs changed"}` | The push touched no `docs/` path -- ignored on purpose |
 | `200` `{"status": "ignored", "event": "..."}` | An event other than `push` or `ping` |
 | `401` `{"error": "invalid signature"}` | The webhook's secret does not match `BYJG_DOCS_WEBHOOK_SECRET` |
