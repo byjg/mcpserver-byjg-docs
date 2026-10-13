@@ -30,11 +30,13 @@ clients browse those.
 | The registry REST API and the browsers built on it (MCP Bench, MCP Registry UI, `mcp-registry-cli`, ...) | List it immediately -- this is where publishing has an instant effect |
 | Downstream aggregators and marketplaces | Scrape the API and republish the entry with their own curation, ratings or scanning |
 | VS Code | The Extensions view (`@mcp`) browses an MCP registry. By default that is GitHub's *curated* MCP Registry, which is a separate submission -- publishing here does not add it. An organisation can point VS Code at any MCP Registry API with the `McpGalleryServiceUrl` policy, including a private one that mirrors this entry |
-| JetBrains IDEs, Claude Code, Claude Desktop, Codex CLI, Gemini CLI, Cursor | No registry browsing at all: the server is added by hand, see [Connecting a client](clients.md) |
+| GitHub Copilot CLI | Experimental `/mcp search` uses GitHub's MCP Registry, not this registry API; the server must be available there to discover it |
+| JetBrains IDEs, Claude Code, Claude Desktop, Codex CLI, Gemini CLI, Cursor | No registry browsing: the server is added by hand, see [Connecting a client](clients.md) |
 
-In short, the registry entry is for **discovery and provenance**, not
-installation. [Connecting a client](clients.md) stays the way to actually use
-the server, whichever editor you run.
+In short, this registry entry is for **discovery and provenance**, not
+installation. Copilot CLI's experimental search uses a separate registry;
+otherwise, [connecting a client](clients.md) is the way to actually use the
+server, whichever editor you run.
 
 ## Why the name is `com.byjg/docs`
 

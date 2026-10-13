@@ -26,6 +26,7 @@ official MCP Registry as `com.byjg/docs`, but no editor installs it from there
 - [Claude Code](#claude-code)
 - [Claude Desktop](#claude-desktop)
 - [Codex CLI](#codex-cli)
+- [GitHub Copilot CLI](#github-copilot-cli)
 - [Gemini CLI](#gemini-cli)
 - [Qwen Code](#qwen-code)
 - [Kilo CLI](#kilo-cli)
@@ -176,6 +177,36 @@ codex mcp add byjg-docs --url https://your-server.example.com/mcp \
 </Tabs>
 
 Verify: `codex mcp list`.
+
+## GitHub Copilot CLI
+
+Install [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
+and sign in with `/login` if prompted. Add the server from your terminal:
+
+<Tabs groupId="auth">
+<TabItem value="none" label="No token" default>
+
+```bash
+copilot mcp add --transport http byjg-docs \
+  https://mcpdocs.byjg.com/mcp
+```
+
+</TabItem>
+<TabItem value="token" label="With token">
+
+```bash
+copilot mcp add --transport http \
+  --header "Authorization: ******" \
+  byjg-docs https://your-server.example.com/mcp
+```
+
+</TabItem>
+</Tabs>
+
+Verify: `copilot mcp list`. Remove: `copilot mcp remove byjg-docs`.
+
+The server is saved in `~/.copilot/mcp-config.json` and is available to
+Copilot CLI sessions.
 
 ## Gemini CLI
 
