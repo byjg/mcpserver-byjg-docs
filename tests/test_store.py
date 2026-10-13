@@ -96,6 +96,38 @@ def test_filters_narrow_results(store, embedder):
     assert [h.chunk.source_path for h in store.search("shared topic", vec, project="nimbus")] == ["b.md"]
 
 
+def test_filter_finds_a_project_crowded_out_of_the_unfiltered_pool(store, embedder):
+    """Regression: the filter ran on the fused pool, after the rankers had cut it.
+
+    A big project that outranks a small one on both rankers filled every slot,
+    so the filtered search came back empty although the small one matched.
+    """
+    for i in range(80):
+        store.replace_document(
+            make_doc(f"gluo-{i}.md", [("H", "shared topic text")], embedder,
+                     content_hash=f"g{i}", category="php", project="gluo")
+        )
+    store.replace_document(
+        make_doc("orm.md", [("H", "shared topic text plus unrelated trailing words")], embedder,
+                 category="php", project="micro-orm")
+    )
+    store.replace_document(
+        make_doc("nimbus.md", [("H", "shared topic text plus unrelated trailing words")], embedder,
+                 content_hash="n", category="devops", project="nimbus")
+    )
+
+    vec = embedder.embed_query("shared topic text")
+    unfiltered = store.search("shared topic text", vec, limit=8)
+    assert {h.chunk.project for h in unfiltered} == {"gluo"}
+
+    by_project = store.search("shared topic text", vec, limit=8, project="micro-orm")
+    assert [h.chunk.source_path for h in by_project] == ["orm.md"]
+    by_category = store.search("shared topic text", vec, limit=8, category="devops")
+    assert [h.chunk.source_path for h in by_category] == ["nimbus.md"]
+    # Both rankers were scoped, not just one of them.
+    assert (by_project[0].vector_rank, by_project[0].text_rank) == (1, 1)
+
+
 def test_list_projects_groups_and_counts(store, embedder):
     store.replace_document(make_doc("a.md", [("H", "x")], embedder, project="micro-orm"))
     store.replace_document(
