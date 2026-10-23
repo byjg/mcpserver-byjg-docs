@@ -98,7 +98,7 @@ services:
   # LAN only. Nothing else depends on it.
   cloudflared:
     profiles: ["tunnel"]
-    image: cloudflare/cloudflared:2026.10.0
+    image: cloudflare/cloudflared:2026.10.1
     depends_on:
       - mcp
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
