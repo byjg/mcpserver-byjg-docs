@@ -19,7 +19,6 @@ byjg-docs-index = "byjg_docs_mcp.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
-    "pytest-asyncio>=0.23",
 ]
 
 [build-system]
