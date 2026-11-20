@@ -58,6 +58,40 @@ def test_tools_are_registered(base, store, embedder):
     assert names == {"search_docs", "get_document", "list_projects"}
 
 
+def test_every_tool_is_annotated_read_only(base, store, embedder):
+    """Without the hints, clients and registries treat a tool as a possible
+    write and warn the user before calling it."""
+    import anyio
+
+    server = build_server(Runtime(settings=base, embedder=embedder, store=store))
+    for tool in anyio.run(server.list_tools):
+        hints = tool.annotations
+        assert hints is not None, tool.name
+        assert hints.read_only_hint is True, tool.name
+        assert hints.destructive_hint is False, tool.name
+        assert hints.idempotent_hint is True, tool.name
+        assert hints.open_world_hint is False, tool.name
+
+
+def test_every_tool_argument_is_described(base, store, embedder):
+    import anyio
+
+    server = build_server(Runtime(settings=base, embedder=embedder, store=store))
+    for tool in anyio.run(server.list_tools):
+        for arg, schema in tool.input_schema.get("properties", {}).items():
+            assert schema.get("description"), f"{tool.name}.{arg}"
+
+
+def test_server_icon_matches_the_registry_listing(base, store, embedder):
+    """The icon handed to clients and the one in server.json must not drift."""
+    import json
+    from pathlib import Path
+
+    server = build_server(Runtime(settings=base, embedder=embedder, store=store))
+    registry = json.loads((Path(__file__).parents[1] / "server.json").read_text())
+    assert [i.src for i in server.icons] == [i["src"] for i in registry["icons"]]
+
+
 def test_empty_index_builds_on_boot_even_without_a_webhook(
     base, store, embedder, no_real_clone
 ):

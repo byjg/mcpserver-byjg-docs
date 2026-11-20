@@ -3,8 +3,17 @@
   "name": "com.byjg/docs",
   "title": "ByJG Open Source Docs",
   "description": "Search the ByJG open source documentation: PHP, DevOps, Helm, JavaScript and AI projects.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "websiteUrl": "https://opensource.byjg.com/docs/ai/mcpserver-byjg-docs/",
+  "icons": [
+    {
+      "src": "https://opensource.byjg.com/img/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/byjg/mcpserver-byjg-docs",
     "source": "github"

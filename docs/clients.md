@@ -595,6 +595,11 @@ green once connected.
 
 ## The tools
 
+All three are read-only: each is annotated `readOnlyHint: true`,
+`destructiveHint: false`, `idempotentHint: true`, `openWorldHint: false`, so
+clients can tell they never change anything and may skip the confirmation
+prompt.
+
 ### `search_docs(query, limit, category, project)`
 
 The main entry point. Returns ranked passages, each with its source path,
