@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import logging
 import secrets
+from typing import Annotated
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
-from pydantic import AnyHttpUrl
+from mcp.types import Icon, ToolAnnotations
+from pydantic import AnyHttpUrl, Field
 
+from . import __version__
 from .querylog import QueryLog
 from .runtime import Runtime, build_runtime
 from .stores import SearchHit
@@ -30,6 +33,16 @@ Use `search_docs` to answer questions about how a ByJG library works, then cite
 the returned URL. Use `get_document` when a search hit looks right but you need
 the surrounding context, and `list_projects` to discover what is documented.
 """
+
+#: Same HTTPS URL as `icons` in server.json, the registry's copy of it.
+ICON = Icon(src="https://opensource.byjg.com/img/logo.svg", mimeType="image/svg+xml", sizes=["any"])
+
+#: Every tool only reads the index built from the published docs: nothing is
+#: changed on behalf of the caller, and no open-ended external system is hit.
+#: (The query log is the server's own bookkeeping, not an effect of the call.)
+READ_ONLY = ToolAnnotations(
+    readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
+)
 
 
 class StaticTokenVerifier(TokenVerifier):
@@ -93,6 +106,8 @@ def build_server(runtime: Runtime) -> MCPServer:
         title="ByJG Documentation",
         instructions=INSTRUCTIONS,
         website_url=settings.site_url,
+        icons=[ICON],
+        version=__version__,
         token_verifier=verifier,
         auth=auth,
     )
@@ -108,12 +123,24 @@ def build_server(runtime: Runtime) -> MCPServer:
             "work. Optionally narrow to a category (php, devops, js, ai, helm) or a "
             "project (micro-orm, restserver, docker-easy-haproxy, ...)."
         ),
+        annotations=READ_ONLY,
     )
     def search_docs(
-        query: str,
-        limit: int = 0,
-        category: str | None = None,
-        project: str | None = None,
+        query: Annotated[
+            str, Field(description="A natural-language question or an exact symbol name.")
+        ],
+        limit: Annotated[
+            int,
+            Field(description="Maximum passages to return; 0 uses the server default. Capped by the server."),
+        ] = 0,
+        category: Annotated[
+            str | None,
+            Field(description="Restrict to one category: php, devops, js, ai or helm."),
+        ] = None,
+        project: Annotated[
+            str | None,
+            Field(description="Restrict to one project, as named by list_projects (e.g. micro-orm)."),
+        ] = None,
     ) -> str:
         limit = limit or settings.default_limit
         limit = max(1, min(limit, settings.max_limit))
@@ -136,8 +163,14 @@ def build_server(runtime: Runtime) -> MCPServer:
             "`php/micro-orm/active-record.md`). Use it when a search hit is "
             "relevant but truncated and you need the whole page."
         ),
+        annotations=READ_ONLY,
     )
-    def get_document(source_path: str) -> str:
+    def get_document(
+        source_path: Annotated[
+            str,
+            Field(description="The `source` value from a search_docs result, e.g. php/micro-orm/active-record.md."),
+        ],
+    ) -> str:
         doc = runtime.store.get_document(source_path)
         query_log.document(source_path, found=doc is not None)
         if doc is None:
@@ -154,6 +187,7 @@ def build_server(runtime: Runtime) -> MCPServer:
             "with document and passage counts. Use it to discover which ByJG "
             "libraries have documentation before searching."
         ),
+        annotations=READ_ONLY,
     )
     def list_projects() -> str:
         query_log.projects()
